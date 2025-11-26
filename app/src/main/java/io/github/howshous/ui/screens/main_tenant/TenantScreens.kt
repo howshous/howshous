@@ -100,6 +100,19 @@ fun TenantSearch(nav: NavController) {
         Text("Search Listings", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(16.dp))
 
+        Button(
+            onClick = { nav.navigate("tenant_ai_helper") },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Text("Ask AI for Boarding House Help")
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         SearchBar(
             query = query,
             onQueryChange = { viewModel.searchByLocation(it) },

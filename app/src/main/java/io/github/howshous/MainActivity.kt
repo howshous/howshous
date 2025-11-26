@@ -18,9 +18,9 @@ class MainActivity : ComponentActivity() {
 
         // Connect to emulators BEFORE any Firebase usage
         val host = "10.0.2.2"
-        FirebaseAuth.getInstance().useEmulator(host, 9099)
-        FirebaseFirestore.getInstance().useEmulator(host, 8080)
-        FirebaseStorage.getInstance().useEmulator(host, 9199)
+        FirebaseAuth.getInstance().useEmulator(host, 9100)
+        FirebaseFirestore.getInstance().useEmulator(host, 8085)
+        FirebaseStorage.getInstance().useEmulator(host, 9190)
 
         setContent {
             HowsHousApp()

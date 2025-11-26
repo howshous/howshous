@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.AsyncImage
 import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.SurfaceLight
@@ -86,9 +87,19 @@ fun LandlordListings(nav: NavController) {
     val viewModel: LandlordListingsViewModel = viewModel()
     val isLoading by viewModel.isLoading.collectAsState()
     val listings by viewModel.listings.collectAsState()
+    val navBackStackEntry by nav.currentBackStackEntryAsState()
+    val listingCreatedFlow = navBackStackEntry?.savedStateHandle?.getStateFlow("listingCreated", false)
+    val listingCreated by listingCreatedFlow?.collectAsState() ?: remember { mutableStateOf(false) }
 
     LaunchedEffect(uid) {
         if (uid.isNotEmpty()) viewModel.loadListingsForLandlord(uid)
+    }
+
+    LaunchedEffect(listingCreated) {
+        if (listingCreated && uid.isNotEmpty()) {
+            viewModel.loadListingsForLandlord(uid)
+            navBackStackEntry?.savedStateHandle?.set("listingCreated", false)
+        }
     }
 
     Column(
