@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import io.github.howshous.data.firestore.ListingRepository
 import io.github.howshous.data.firestore.AIChatRepository
-import io.github.howshous.ui.util.LocalAIHelper
+import io.github.howshous.ui.util.LocalAIHelper  // Available for offline testing or fallback
+import io.github.howshous.ui.util.GroqApiClient
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -20,6 +21,12 @@ data class TenantAIMessage(
 enum class MessageAuthor { TENANT, AI }
 
 class TenantAIHelperViewModel : ViewModel() {
+    
+    companion object {
+        // Set to true to enable LocalAIHelper as fallback when Groq fails
+        // Useful for offline testing or when API limits are reached
+        private const val ENABLE_LOCAL_AI_FALLBACK = false
+    }
 
     private val listingRepository = ListingRepository()
     private val aiChatRepository = AIChatRepository()
@@ -76,13 +83,50 @@ class TenantAIHelperViewModel : ViewModel() {
         viewModelScope.launch {
             _isThinking.value = true
             val listingsJson = buildListingsJson()
-            // Use local AI helper instead of Gemini API
+            
+            // Try Groq API first, with optional LocalAIHelper fallback
             val aiMessageText = try {
-                LocalAIHelper.generateRecommendation(trimmed, listingsJson)
+                android.util.Log.d("TenantAIHelper", "Attempting to use Groq API...")
+                val groqResult = GroqApiClient.fetchRecommendation(trimmed, listingsJson)
+                groqResult.fold(
+                    onSuccess = { 
+                        android.util.Log.d("TenantAIHelper", "Groq API succeeded")
+                        it
+                    },
+                    onFailure = { error ->
+                        android.util.Log.w("TenantAIHelper", "Groq API failed: ${error.message}", error)
+                        
+                        // Fallback to LocalAIHelper if enabled (for offline testing or API limits)
+                        if (ENABLE_LOCAL_AI_FALLBACK) {
+                            android.util.Log.d("TenantAIHelper", "Falling back to LocalAIHelper...")
+                            try {
+                                LocalAIHelper.generateRecommendation(trimmed, listingsJson)
+                            } catch (localError: Exception) {
+                                android.util.Log.e("TenantAIHelper", "LocalAIHelper also failed: ${localError.message}", localError)
+                                "Sorry, I'm having trouble connecting to the AI service right now. Error: ${error.message}. Please try again later."
+                            }
+                        } else {
+                            "Sorry, I'm having trouble connecting to the AI service right now. Error: ${error.message}. Please try again later."
+                        }
+                    }
+                )
             } catch (e: Exception) {
-                android.util.Log.e("TenantAIHelper", "Local AI error: ${e.message}", e)
-                "I encountered an error processing your request. Please try again."
+                android.util.Log.e("TenantAIHelper", "Groq API exception: ${e.message}", e)
+                
+                // Fallback to LocalAIHelper if enabled
+                if (ENABLE_LOCAL_AI_FALLBACK) {
+                    android.util.Log.d("TenantAIHelper", "Exception caught, falling back to LocalAIHelper...")
+                    try {
+                        LocalAIHelper.generateRecommendation(trimmed, listingsJson)
+                    } catch (localError: Exception) {
+                        android.util.Log.e("TenantAIHelper", "LocalAIHelper also failed: ${localError.message}", localError)
+                        "Sorry, I encountered an error: ${e.message}. Please try again later."
+                    }
+                } else {
+                    "Sorry, I encountered an error: ${e.message}. Please try again later."
+                }
             }
+            
             val aiReply = TenantAIMessage(
                 id = System.currentTimeMillis(),
                 author = MessageAuthor.AI,

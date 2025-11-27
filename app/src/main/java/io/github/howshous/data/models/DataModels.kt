@@ -87,3 +87,18 @@ data class Rental(
     val status: String = "active",
     val monthlyRent: Int = 0
 )
+
+data class Issue(
+    val id: String = "",
+    val listingId: String = "",
+    val tenantId: String = "",
+    val landlordId: String = "",
+    val contractId: String = "",
+    val chatId: String = "",
+    val issueType: String = "",
+    val description: String = "",
+    val status: String = "pending", // "pending", "resolved"
+    val resolutionPhotoUrl: String = "",
+    val reportedAt: Timestamp? = null,
+    val resolvedAt: Timestamp? = null
+)

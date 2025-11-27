@@ -200,6 +200,22 @@ fun ReportIssueScreen(nav: NavController) {
                                     val message = "🚨 ISSUE REPORT\n\nType: $selectedIssueType\n\nDescription: $issueDescription"
                                     chatRepository.sendMessage(chat.id, uid, message)
 
+                                    // Create issue record
+                                    val issueRepository = io.github.howshous.data.firestore.IssueRepository()
+                                    val issue = io.github.howshous.data.models.Issue(
+                                        id = "",
+                                        listingId = contract.listingId,
+                                        tenantId = uid,
+                                        landlordId = contract.landlordId,
+                                        contractId = contract.id,
+                                        chatId = chat.id,
+                                        issueType = selectedIssueType,
+                                        description = issueDescription,
+                                        status = "pending",
+                                        reportedAt = com.google.firebase.Timestamp.now()
+                                    )
+                                    issueRepository.createIssue(issue)
+
                                     snackbarHostState.showSnackbar("Issue reported successfully!")
                                     nav.popBackStack()
                                 } catch (e: Exception) {

@@ -20,7 +20,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Gemini API key is injected from local.properties (never committed to VCS)
+        // API keys are injected from local.properties (never committed to VCS)
         val localProps = Properties().apply {
             val file = rootProject.file("local.properties")
             if (file.exists()) {
@@ -28,7 +28,11 @@ android {
             }
         }
         val geminiApiKey = localProps.getProperty("GEMINI_API_KEY") ?: ""
+        val openaiApiKey = localProps.getProperty("OPENAI_API_KEY") ?: ""
+        val groqApiKey = localProps.getProperty("GROQ_API_KEY") ?: ""
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        buildConfigField("String", "OPENAI_API_KEY", "\"$openaiApiKey\"")
+        buildConfigField("String", "GROQ_API_KEY", "\"$groqApiKey\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

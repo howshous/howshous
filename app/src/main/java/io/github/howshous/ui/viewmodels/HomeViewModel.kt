@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.howshous.data.firestore.ListingRepository
 import io.github.howshous.data.firestore.RentalRepository
+import io.github.howshous.data.firestore.IssueRepository
 import io.github.howshous.data.models.Listing
 import io.github.howshous.data.models.Rental
+import io.github.howshous.data.models.Issue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -13,6 +15,7 @@ import kotlinx.coroutines.launch
 class HomeViewModel : ViewModel() {
     private val listingRepo = ListingRepository()
     private val rentalRepo = RentalRepository()
+    private val issueRepo = IssueRepository()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -40,6 +43,10 @@ class HomeViewModel : ViewModel() {
 
     private val _overdueCount = MutableStateFlow(0)
     val overdueCount: StateFlow<Int> = _overdueCount
+
+    // Issues for landlord
+    private val _landlordIssues = MutableStateFlow<List<Issue>>(emptyList())
+    val landlordIssues: StateFlow<List<Issue>> = _landlordIssues
 
     fun loadTenantHome(tenantId: String) {
         viewModelScope.launch {
@@ -69,6 +76,10 @@ class HomeViewModel : ViewModel() {
             _activeCount.value = activeListings
             _vacantCount.value = vacantListings
             _overdueCount.value = overdueRentals
+
+            // Load recent issues
+            val issues = issueRepo.getIssuesForLandlord(landlordId, 10)
+            _landlordIssues.value = issues
 
             _isLoading.value = false
         }

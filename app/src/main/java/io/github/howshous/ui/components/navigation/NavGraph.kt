@@ -113,5 +113,10 @@ fun HowsHousApp(nav: NavHostController = rememberNavController()) {
         composable("report_issue") {
             ReportIssueScreen(nav)
         }
+
+        composable("issue_detail/{issueId}") { backStackEntry ->
+            val issueId = backStackEntry.arguments?.getString("issueId") ?: ""
+            io.github.howshous.ui.screens.main_landlord.IssueDetailScreen(nav, issueId)
+        }
     }
 }

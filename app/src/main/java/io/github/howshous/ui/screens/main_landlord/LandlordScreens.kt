@@ -41,6 +41,7 @@ fun LandlordHome(nav: NavController) {
     val activeCount by viewModel.activeCount.collectAsState()
     val vacantCount by viewModel.vacantCount.collectAsState()
     val overdueCount by viewModel.overdueCount.collectAsState()
+    val issues by viewModel.landlordIssues.collectAsState()
 
     LaunchedEffect(uid) {
         if (uid.isNotEmpty()) viewModel.loadLandlordHome(uid)
@@ -69,6 +70,64 @@ fun LandlordHome(nav: NavController) {
 
         Spacer(Modifier.height(16.dp))
         Text("Recent Activity", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        
+        if (issues.isEmpty()) {
+            Text("No recent issues", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(issues) { issue ->
+                    IssueCard(issue = issue, onClick = {
+                        nav.navigate("issue_detail/${issue.id}")
+                    })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun IssueCard(issue: io.github.howshous.data.models.Issue, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = if (issue.status == "pending") Color(0xFFFFF9C4) else Color.White
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "🚨 ${issue.issueType}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (issue.status == "pending") OverdueRed else PricePointGreen
+                )
+                Text(
+                    issue.status.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (issue.status == "pending") OverdueRed else PricePointGreen
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                issue.description.take(100) + if (issue.description.length > 100) "..." else "",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Reported: ${issue.reportedAt?.toDate()?.toString()?.take(16) ?: "Unknown"}",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray
+            )
+        }
     }
 }
 
