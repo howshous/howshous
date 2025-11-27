@@ -10,7 +10,6 @@ import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
-import androidx.navigation.NavController
 
 
 class SignupViewModel : ViewModel() {
@@ -77,42 +76,35 @@ class SignupViewModel : ViewModel() {
 
     // TENANT
     suspend fun finishTenantSignup(
-        context: Context,
-        nav: NavController
-    ) {
+        context: Context
+    ): Result<Unit> {
         val auth = FirebaseAuth.getInstance()
         val db = FirebaseFirestore.getInstance()
 
         val email = contact.value
         val password = password.value
 
+        if (email.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("Email and password are required."))
+        }
+
         val uid = try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             result.user!!.uid
         } catch (e: Exception) {
-            e.printStackTrace()
-
-            // Show an error (this text is temporary — you can swap it with a Snackbar)
-            println("SIGNUP FAILED: ${e.message}")
-
-            // If the email already exists, stop signup cleanly.
-            if (e is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
-                // You can show a UI dialog later.
-                // For now, just return to avoid crash:
-                return
-            }
-
-            return
+            return Result.failure(e)
         }
 
-        val selfieUri = tenantSelfie.value!!
+        val selfieUri = tenantSelfie.value
+            ?: return Result.failure(IllegalStateException("Selfie is missing."))
         val profileUrl = uploadCompressedImage(
             context,
             selfieUri,
             "users/$uid/profile.jpg"
         )
 
-        val idUri = tenantId.value!!
+        val idUri = tenantId.value
+            ?: return Result.failure(IllegalStateException("ID photo is missing."))
 
         val selfieVerificationUrl = uploadCompressedImage(
             context,
@@ -150,41 +142,33 @@ class SignupViewModel : ViewModel() {
 
         FirebaseAuth.getInstance().signOut()
 
-        nav.navigate("login")
+        return Result.success(Unit)
     }
 
     // LANDLORD
     suspend fun finishLandlordSignup(
-        context: Context,
-        nav: NavController
-    ) {
+        context: Context
+    ): Result<Unit> {
         val auth = FirebaseAuth.getInstance()
         val db = FirebaseFirestore.getInstance()
 
         val email = contact.value
         val password = password.value
 
+        if (email.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("Email and password are required."))
+        }
+
         val uid = try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             result.user!!.uid
         } catch (e: Exception) {
-            e.printStackTrace()
-
-            // Show an error (this text is temporary — you can swap it with a Snackbar)
-            println("SIGNUP FAILED: ${e.message}")
-
-            // If the email already exists, stop signup cleanly.
-            if (e is com.google.firebase.auth.FirebaseAuthUserCollisionException) {
-                // You can show a UI dialog later.
-                // For now, just return to avoid crash:
-                return
-            }
-
-            return
+            return Result.failure(e)
         }
 
         // Upload profile (selfie)
-        val selfieUri = landlordSelfie.value!!
+        val selfieUri = landlordSelfie.value
+            ?: return Result.failure(IllegalStateException("Selfie is missing."))
         val profileUrl = uploadCompressedImage(
             context,
             selfieUri,
@@ -192,8 +176,10 @@ class SignupViewModel : ViewModel() {
         )
 
         // Upload verification files
-        val idUri = landlordId.value!!
-        val propertyUri = landlordPropertyDoc.value!!
+        val idUri = landlordId.value
+            ?: return Result.failure(IllegalStateException("ID photo is missing."))
+        val propertyUri = landlordPropertyDoc.value
+            ?: return Result.failure(IllegalStateException("Property document is missing."))
 
         val selfieVerificationUrl = uploadCompressedImage(context, selfieUri, "verifications/$uid/selfie.jpg")
         val idVerificationUrl = uploadCompressedImage(context, idUri, "verifications/$uid/id.jpg")
@@ -225,7 +211,7 @@ class SignupViewModel : ViewModel() {
 
         FirebaseAuth.getInstance().signOut()
 
-        nav.navigate("login")
+        return Result.success(Unit)
     }
 
 

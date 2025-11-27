@@ -95,14 +95,20 @@ class ListingViewModel : ViewModel() {
     val isLoading: StateFlow<Boolean> = _isLoading
 
     fun loadListing(listingId: String) {
-        if (listingId.isEmpty()) return
-        _isLoading.value = true
+        if (listingId.isBlank()) {
+            _listing.value = null
+            return
+        }
+
         viewModelScope.launch {
+            _isLoading.value = true
             try {
-                // TODO: Implement loading listing from repository via listingId
-                _isLoading.value = false
+                val result = listingRepo.getListing(listingId)
+                _listing.value = result
             } catch (e: Exception) {
                 e.printStackTrace()
+                _listing.value = null
+            } finally {
                 _isLoading.value = false
             }
         }

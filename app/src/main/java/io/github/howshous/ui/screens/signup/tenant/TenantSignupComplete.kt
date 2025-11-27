@@ -4,9 +4,22 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,38 +37,44 @@ import kotlinx.coroutines.launch
 fun TenantSignupComplete(nav: NavController, signupVM: SignupViewModel) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var isSubmitting by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TenantGreen)
-            .padding(32.dp)
-    ) {
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize()
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TenantGreen)
+                .padding(32.dp)
+                .padding(padding)
         ) {
 
-            // Back
-            Row(modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { nav.popBackStack() }) {
-                    Icon(
-                        painter = painterResource(R.drawable.i_back),
-                        contentDescription = "Back",
-                        tint = Color.White
-                    )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxSize()
+            ) {
+
+                // Back
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    IconButton(onClick = { nav.popBackStack() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.i_back),
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
 
-            // Logo
-            Image(
-                painter = painterResource(R.drawable.logo_white),
-                contentDescription = null,
-                modifier = Modifier.size(150.dp)
-            )
+                // Logo
+                Image(
+                    painter = painterResource(R.drawable.logo_white),
+                    contentDescription = null,
+                    modifier = Modifier.size(150.dp)
+                )
 
             Spacer(Modifier.height(8.dp))
 
@@ -96,25 +115,48 @@ fun TenantSignupComplete(nav: NavController, signupVM: SignupViewModel) {
 
             Spacer(Modifier.height(48.dp))
 
-            Button(
-                onClick = {
-                    scope.launch {
-                        signupVM.finishTenantSignup(
-                            context = context,
-                            nav = nav
+                Button(
+                    onClick = {
+                        if (isSubmitting) return@Button
+                        scope.launch {
+                            isSubmitting = true
+                            val result = signupVM.finishTenantSignup(
+                                context = context
+                            )
+                            isSubmitting = false
+                            result.onSuccess {
+                                signupVM.clearAll()
+                                nav.navigate("login") {
+                                    popUpTo("login_choice") { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }.onFailure { error ->
+                                snackbarHostState.showSnackbar(
+                                    message = error.localizedMessage ?: "Failed to finish signup."
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = TenantGreen
+                    ),
+                    enabled = !isSubmitting
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            color = TenantGreen,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
                         )
+                    } else {
+                        Text("Login")
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth(0.7f)
-                    .height(50.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = TenantGreen
-                )
-            ) {
-                Text("Login")
+                }
             }
         }
     }

@@ -10,27 +10,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.SurfaceLight
 import io.github.howshous.ui.viewmodels.ListingViewModel
 
 @Composable
 fun ListingDetailScreen(nav: NavController, listingId: String = "") {
-    val context = LocalContext.current
-    val uid by readUidFlow(context).collectAsState(initial = "")
-    var isLoading by remember { mutableStateOf(true) }
-    var listing by remember { mutableStateOf<io.github.howshous.data.models.Listing?>(null) }
+    val viewModel: ListingViewModel = viewModel()
+    val listing by viewModel.listing.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(listingId) {
-        if (listingId.isNotEmpty()) {
-            // TODO: Load listing from Firestore via repository
-            isLoading = false
-        }
+        viewModel.loadListing(listingId)
     }
 
     Column(
@@ -88,8 +82,8 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
                 item {
                     Text(listing!!.location, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))
-                    Text("₹${listing!!.price}/month", style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color.Green)
-                    Text("Deposit: ₹${listing!!.deposit}", style = MaterialTheme.typography.bodySmall)
+                    Text("₱${listing!!.price}/month", style = MaterialTheme.typography.titleMedium, color = androidx.compose.ui.graphics.Color.Green)
+                    Text("Deposit: ₱${listing!!.deposit}", style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(16.dp))
                 }
 
@@ -128,7 +122,12 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
                 }
             }
         } else {
-            Text("Listing not found", modifier = Modifier.align(Alignment.CenterHorizontally).padding(32.dp))
+                    Text(
+                        "Listing not found",
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(32.dp)
+                    )
         }
     }
 }

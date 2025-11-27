@@ -62,7 +62,7 @@ fun LandlordListingDetail(nav: NavController, listingId: String = "") {
                     Spacer(Modifier.height(8.dp))
                     Text("Location", style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(8.dp))
-                    Text("Price: ₹--/month", style = MaterialTheme.typography.bodySmall)
+                    Text("Price: ₱--/month", style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(16.dp))
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

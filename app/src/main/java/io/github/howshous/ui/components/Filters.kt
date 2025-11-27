@@ -71,8 +71,8 @@ fun PriceRangeSlider(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("₹${minPrice / 1000}K", style = MaterialTheme.typography.bodySmall)
-            Text("₹${maxPrice / 1000}K", style = MaterialTheme.typography.bodySmall)
+            Text("₱${minPrice / 1000}K", style = MaterialTheme.typography.bodySmall)
+            Text("₱${maxPrice / 1000}K", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

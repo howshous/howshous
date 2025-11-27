@@ -102,13 +102,25 @@ class ChatRepository {
 
     suspend fun getChatsForUser(userId: String): List<Chat> {
         return try {
-            val snap = db.collection("chats")
-                .whereArrayContains("participants", userId)
+            // Query chats where user is either tenant or landlord
+            val tenantChats = db.collection("chats")
+                .whereEqualTo("tenantId", userId)
                 .get()
                 .await()
-            snap.documents.mapNotNull { doc ->
-                doc.toObject(Chat::class.java)?.copy(id = doc.id)
-            }
+            
+            val landlordChats = db.collection("chats")
+                .whereEqualTo("landlordId", userId)
+                .get()
+                .await()
+            
+            val allChats = (tenantChats.documents + landlordChats.documents)
+                .distinctBy { it.id }
+                .mapNotNull { doc ->
+                    doc.toObject(Chat::class.java)?.copy(id = doc.id)
+                }
+            
+            // Sort by lastTimestamp descending
+            allChats.sortedByDescending { it.lastTimestamp?.seconds ?: 0L }
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
@@ -132,13 +144,22 @@ class ChatRepository {
 
     suspend fun sendMessage(chatId: String, senderId: String, text: String) {
         try {
+            val timestamp = com.google.firebase.Timestamp.now()
             val message = Message(
                 senderId = senderId,
                 text = text,
                 chatId = chatId,
-                timestamp = com.google.firebase.Timestamp.now()
+                timestamp = timestamp
             )
+            // Save message
             db.collection("chats").document(chatId).collection("messages").add(message).await()
+            // Update chat's lastMessage and lastTimestamp
+            db.collection("chats").document(chatId).update(
+                mapOf(
+                    "lastMessage" to text,
+                    "lastTimestamp" to timestamp
+                )
+            ).await()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -151,6 +172,16 @@ class ChatRepository {
         } catch (e: Exception) {
             e.printStackTrace()
             ""
+        }
+    }
+
+    suspend fun getChat(chatId: String): Chat? {
+        return try {
+            val doc = db.collection("chats").document(chatId).get().await()
+            doc.toObject(Chat::class.java)?.copy(id = doc.id)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 }

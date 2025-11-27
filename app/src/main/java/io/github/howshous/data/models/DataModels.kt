@@ -34,7 +34,26 @@ data class Message(
     val chatId: String = "",
     val senderId: String = "",
     val text: String = "",
-    val timestamp: Timestamp? = null
+    val timestamp: Timestamp? = null,
+    val type: String = "text", // "text", "contract"
+    val contractId: String = "" // Only used when type is "contract"
+)
+
+data class Contract(
+    val id: String = "",
+    val chatId: String = "",
+    val listingId: String = "",
+    val landlordId: String = "",
+    val tenantId: String = "",
+    val title: String = "",
+    val terms: String = "",
+    val monthlyRent: Int = 0,
+    val deposit: Int = 0,
+    val startDate: Timestamp? = null,
+    val endDate: Timestamp? = null,
+    val status: String = "pending", // "pending", "signed", "rejected"
+    val signedAt: Timestamp? = null,
+    val createdAt: Timestamp? = null
 )
 
 data class Chat(

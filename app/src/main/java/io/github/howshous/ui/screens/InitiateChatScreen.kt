@@ -101,32 +101,39 @@ fun InitiateChatScreen(nav: NavController, listingId: String = "", landlordId: S
                             val chats = chatRepository.getChatsForUser(uid)
                             val existingChat = chats.find { 
                                 it.listingId == listingId && 
-                                ((it.tenantId == uid && it.landlordId == landlordId) ||
-                                 (it.landlordId == uid && it.tenantId == landlordId))
+                                it.tenantId == uid && 
+                                it.landlordId == landlordId
                             }
 
                             val chatId = if (existingChat != null) {
+                                // Send message to existing chat
+                                chatRepository.sendMessage(existingChat.id, uid, message)
                                 existingChat.id
                             } else {
                                 // Create new chat
                                 val newChat = Chat(
                                     id = "", // Firestore will generate
                                     listingId = listingId,
-                                    tenantId = if (uid == landlordId) "" else uid,
-                                    landlordId = if (uid == landlordId) uid else landlordId,
+                                    tenantId = uid,
+                                    landlordId = landlordId,
                                     lastMessage = message,
                                     lastTimestamp = Timestamp.now()
                                 )
-                                chatRepository.createChat(newChat)
+                                val createdChatId = chatRepository.createChat(newChat)
+                                // Send initial message
+                                if (createdChatId.isNotEmpty()) {
+                                    chatRepository.sendMessage(createdChatId, uid, message)
+                                }
+                                createdChatId
                             }
 
-                            // Send initial message
                             if (chatId.isNotEmpty()) {
-                                chatRepository.sendMessage(chatId, uid, message)
-                            }
-
-                            nav.navigate("chat/$chatId") {
-                                popUpTo("initiate_chat/$listingId/$landlordId") { inclusive = true }
+                                nav.navigate("chat/$chatId") {
+                                    popUpTo("initiate_chat/$listingId/$landlordId") { inclusive = true }
+                                }
+                            } else {
+                                errorMessage = "Failed to create conversation"
+                                isLoading = false
                             }
                         } catch (e: Exception) {
                             errorMessage = "Failed to start conversation: ${e.message}"

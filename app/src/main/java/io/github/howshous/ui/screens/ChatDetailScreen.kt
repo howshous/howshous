@@ -1,6 +1,7 @@
 package io.github.howshous.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,10 +17,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import io.github.howshous.data.firestore.ListingRepository
 import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.NearWhite
 import io.github.howshous.ui.theme.SurfaceLight
 import io.github.howshous.ui.viewmodels.ChatViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,14 +32,30 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
     val uid by readUidFlow(context).collectAsState(initial = "")
     val viewModel: ChatViewModel = viewModel()
     val messages by viewModel.messages.collectAsState()
+    val contracts by viewModel.contracts.collectAsState()
+    val currentChat by viewModel.currentChat.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var messageText by remember { mutableStateOf("") }
+    var showContractDialog by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val listingRepository = remember { ListingRepository() }
+    var listing by remember { mutableStateOf<io.github.howshous.data.models.Listing?>(null) }
 
     LaunchedEffect(chatId) {
         if (chatId.isNotEmpty()) {
             viewModel.loadMessagesForChat(chatId)
         }
     }
+
+    LaunchedEffect(currentChat) {
+        currentChat?.listingId?.let { listingId ->
+            if (listingId.isNotEmpty()) {
+                listing = listingRepository.getListing(listingId)
+            }
+        }
+    }
+
+    val isLandlord = currentChat?.landlordId == uid
 
     Column(
         modifier = Modifier
@@ -74,6 +93,20 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
                         .padding(12.dp),
                     reverseLayout = true
                 ) {
+                    // Show contracts
+                    items(contracts.reversed()) { contract ->
+                        ContractMessageCard(
+                            contract = contract,
+                            isLandlord = isLandlord,
+                            onViewContract = { showContractDialog = contract.id },
+                            onSignContract = {
+                                scope.launch {
+                                    viewModel.signContract(contract.id)
+                                }
+                            }
+                        )
+                    }
+                    // Show messages
                     items(messages.reversed()) { message ->
                         val isUserMessage = message.senderId == uid
                         Row(
@@ -108,6 +141,36 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
             }
         }
 
+        // Contract button for landlords
+        if (isLandlord && listing != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val contractId = viewModel.sendContract(
+                                chatId = chatId,
+                                listingId = listing!!.id,
+                                landlordId = uid,
+                                tenantId = currentChat?.tenantId ?: "",
+                                monthlyRent = listing!!.price,
+                                deposit = listing!!.deposit
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    )
+                ) {
+                    Text("📄 Send Contract")
+                }
+            }
+        }
+
         // Message input
         Row(
             modifier = Modifier
@@ -137,6 +200,132 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
             }
         }
     }
+
+    // Contract dialog
+    showContractDialog?.let { contractId ->
+        val contract = contracts.find { it.id == contractId }
+        contract?.let {
+            ContractDialog(
+                contract = it,
+                isLandlord = isLandlord,
+                onDismiss = { showContractDialog = null },
+                onSign = {
+                    scope.launch {
+                        viewModel.signContract(it.id)
+                        showContractDialog = null
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun ContractMessageCard(
+    contract: io.github.howshous.data.models.Contract,
+    isLandlord: Boolean,
+    onViewContract: () -> Unit,
+    onSignContract: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onViewContract() },
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFE3F2FD)
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("📄", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        contract.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color(0xFF1976D2)
+                    )
+                }
+                Text(
+                    contract.status.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when (contract.status) {
+                        "signed" -> Color(0xFF4CAF50)
+                        "pending" -> Color(0xFFFF9800)
+                        else -> Color.Gray
+                    }
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("Rent: ₱${contract.monthlyRent}/month", style = MaterialTheme.typography.bodySmall)
+            Text("Deposit: ₱${contract.deposit}", style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(8.dp))
+            if (!isLandlord && contract.status == "pending") {
+                Button(
+                    onClick = onSignContract,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    )
+                ) {
+                    Text("Agree to Contract")
+                }
+            } else {
+                TextButton(
+                    onClick = onViewContract,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("View Details")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ContractDialog(
+    contract: io.github.howshous.data.models.Contract,
+    isLandlord: Boolean,
+    onDismiss: () -> Unit,
+    onSign: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(contract.title) },
+        text = {
+            Column {
+                Text("Monthly Rent: ₱${contract.monthlyRent}", style = MaterialTheme.typography.bodyMedium)
+                Text("Deposit: ₱${contract.deposit}", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(16.dp))
+                Text("Terms and Conditions:", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                Text(contract.terms, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            if (!isLandlord && contract.status == "pending") {
+                Button(onClick = onSign) {
+                    Text("Agree to Contract")
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("Close")
+                }
+            }
+        },
+        dismissButton = {
+            if (!isLandlord && contract.status == "pending") {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        }
+    )
 }
 
 private fun formatTime(timestamp: com.google.firebase.Timestamp?): String {

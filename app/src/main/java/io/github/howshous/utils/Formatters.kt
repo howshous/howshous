@@ -49,15 +49,15 @@ object DateTimeFormatter {
 object CurrencyFormatter {
     fun formatPrice(price: Int): String {
         return when {
-            price >= 10000000 -> "₹${price / 10000000}Cr"
-            price >= 100000 -> "₹${price / 100000}L"
-            price >= 1000 -> "₹${price / 1000}K"
-            else -> "₹$price"
+            price >= 10000000 -> "₱${price / 10000000}Cr"
+            price >= 100000 -> "₱${price / 100000}L"
+            price >= 1000 -> "₱${price / 1000}K"
+            else -> "₱$price"
         }
     }
 
     fun formatRent(price: Int): String {
-        return "₹$price/month"
+        return "₱$price/month"
     }
 }
 
