@@ -24,7 +24,7 @@ fun TenantMainShell(rootNav: NavHostController) {
 
     val bottomNavItems = listOf(
         BottomNavItem("Home", R.drawable.i_home_0, R.drawable.i_home_1, "tenant_home"),
-        BottomNavItem("Search", R.drawable.i_home_0, R.drawable.i_home_1, "tenant_search"),
+        BottomNavItem("Search", R.drawable.i_search_0, R.drawable.i_search_1, "tenant_search"),
         BottomNavItem("Contact", R.drawable.i_message_0, R.drawable.i_message_1, "tenant_contact"),
         BottomNavItem("Alerts", R.drawable.i_bell_0, R.drawable.i_bell_1, "tenant_notifications"),
         BottomNavItem("Account", R.drawable.i_account_0, R.drawable.i_account_1, "tenant_account")
