@@ -18,9 +18,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import io.github.howshous.data.firestore.ListingRepository
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.NearWhite
 import io.github.howshous.ui.theme.SurfaceLight
+import io.github.howshous.ui.theme.TenantGreen
+import io.github.howshous.ui.theme.LandlordBlue
+import io.github.howshous.ui.theme.PricePointGreen
+import io.github.howshous.ui.theme.DueText
+import io.github.howshous.ui.theme.slightlyGray
+import io.github.howshous.ui.theme.InputShape
+import io.github.howshous.ui.theme.inputColors
 import io.github.howshous.ui.viewmodels.ChatViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -66,11 +74,11 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF3EDF7))
+                .background(SurfaceLight)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { nav.popBackStack() }) {
+            DebouncedIconButton(onClick = { nav.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
             Text("Conversation", style = MaterialTheme.typography.titleMedium)
@@ -118,20 +126,20 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
                             Card(
                                 modifier = Modifier.widthIn(max = 250.dp),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isUserMessage) Color(0xFF1BA37C) else Color(0xFFFFFFFF)
+                                    containerColor = if (isUserMessage) TenantGreen else NearWhite
                                 )
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Text(
                                         message.text,
-                                        color = if (isUserMessage) Color.White else Color.Black,
+                                        color = if (isUserMessage) Color.White else MaterialTheme.colorScheme.onSurface,
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                     Spacer(Modifier.height(4.dp))
                                     Text(
                                         formatTime(message.timestamp),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (isUserMessage) Color.White.copy(alpha = 0.7f) else Color.Gray
+                                        color = if (isUserMessage) Color.White.copy(alpha = 0.7f) else slightlyGray
                                     )
                                 }
                             }
@@ -163,7 +171,8 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
+                        containerColor = LandlordBlue,
+                        contentColor = Color.White
                     )
                 ) {
                     Text("📄 Send Contract")
@@ -182,6 +191,8 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
                 value = messageText,
                 onValueChange = { messageText = it },
                 placeholder = { Text("Type a message...") },
+                shape = InputShape,
+                colors = inputColors(),
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 40.dp)
@@ -196,7 +207,7 @@ fun ChatDetailScreen(nav: NavController, chatId: String = "") {
                 },
                 modifier = Modifier.size(40.dp)
             ) {
-                Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = Color(0xFF1BA37C))
+                Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = TenantGreen)
             }
         }
     }
@@ -233,7 +244,7 @@ fun ContractMessageCard(
             .padding(vertical = 4.dp)
             .clickable { onViewContract() },
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFE3F2FD)
+            containerColor = NearWhite
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -248,16 +259,16 @@ fun ContractMessageCard(
                     Text(
                         contract.title,
                         style = MaterialTheme.typography.titleSmall,
-                        color = Color(0xFF1976D2)
+                        color = LandlordBlue
                     )
                 }
                 Text(
                     contract.status.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     color = when (contract.status) {
-                        "signed" -> Color(0xFF4CAF50)
-                        "pending" -> Color(0xFFFF9800)
-                        else -> Color.Gray
+                        "signed" -> PricePointGreen
+                        "pending" -> DueText
+                        else -> slightlyGray
                     }
                 )
             }
@@ -270,7 +281,8 @@ fun ContractMessageCard(
                     onClick = onSignContract,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
+                        containerColor = TenantGreen,
+                        contentColor = Color.White
                     )
                 ) {
                     Text("Agree to Contract")

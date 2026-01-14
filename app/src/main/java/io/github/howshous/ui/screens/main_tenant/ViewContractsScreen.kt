@@ -19,8 +19,10 @@ import androidx.navigation.NavController
 import io.github.howshous.data.firestore.ContractRepository
 import io.github.howshous.data.firestore.ListingRepository
 import io.github.howshous.data.models.Contract
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.SurfaceLight
+import io.github.howshous.ui.theme.slightlyGray
 import io.github.howshous.ui.viewmodels.ContractsViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -68,11 +70,11 @@ fun ViewContractsScreen(nav: NavController) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF3EDF7))
+                .background(SurfaceLight)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { nav.popBackStack() }) {
+            DebouncedIconButton(onClick = { nav.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
             Text("My Contracts", style = MaterialTheme.typography.titleLarge)
@@ -146,7 +148,7 @@ fun ContractCard(
             Text(
                 contract.title,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = slightlyGray
             )
             Spacer(Modifier.height(8.dp))
             Row(
@@ -167,7 +169,7 @@ fun ContractCard(
                 Text(
                     "Signed: ${formatDate(it)}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
+                    color = slightlyGray
                 )
             }
         }

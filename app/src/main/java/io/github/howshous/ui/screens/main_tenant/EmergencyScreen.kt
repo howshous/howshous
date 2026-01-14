@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.theme.SurfaceLight
 
 @Composable
@@ -39,7 +40,7 @@ fun EmergencyScreen(nav: NavController) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { nav.popBackStack() }) {
+            DebouncedIconButton(onClick = { nav.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
             }
             Text(

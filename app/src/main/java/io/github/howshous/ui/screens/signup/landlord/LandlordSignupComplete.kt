@@ -8,7 +8,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -29,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.howshous.R
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.theme.LandlordBlue
 import io.github.howshous.ui.viewmodels.SignupViewModel
 import kotlinx.coroutines.launch
@@ -57,7 +57,7 @@ fun LandlordSignupComplete(nav: NavController, signupVM: SignupViewModel) {
             ) {
 
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    IconButton(onClick = { nav.popBackStack() }) {
+                    DebouncedIconButton(onClick = { nav.popBackStack() }) {
                         Icon(
                             painter = painterResource(R.drawable.i_back),
                             contentDescription = null,

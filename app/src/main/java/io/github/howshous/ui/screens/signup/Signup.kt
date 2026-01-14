@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.howshous.R
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.theme.InputShape
 import io.github.howshous.ui.theme.LandlordBlue
 import io.github.howshous.ui.theme.TenantGreen
@@ -26,6 +27,7 @@ import io.github.howshous.ui.theme.inputColors
 import io.github.howshous.ui.theme.lighterGray
 import io.github.howshous.ui.theme.slightlyGray
 import io.github.howshous.ui.viewmodels.SignupViewModel
+import io.github.howshous.utils.ValidationUtils
 
 @Composable
 fun Signup(nav: NavController, signupVM: SignupViewModel) {
@@ -35,6 +37,16 @@ fun Signup(nav: NavController, signupVM: SignupViewModel) {
     val contactValue by signupVM.contact.collectAsState()
     val passwordValue by signupVM.password.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
+    var showErrors by remember { mutableStateOf(false) }
+
+    val firstValid = first.trim().isNotEmpty()
+    val lastValid = last.trim().isNotEmpty()
+    val contactTrimmed = contactValue.trim()
+    val contactValid = contactTrimmed.isNotEmpty() && (
+        ValidationUtils.isValidEmail(contactTrimmed) || ValidationUtils.isValidPhone(contactTrimmed)
+    )
+    val passwordValid = ValidationUtils.isValidPassword(passwordValue)
+    val canContinue = firstValid && lastValid && contactValid && passwordValid
 
     Box(
         modifier = Modifier
@@ -58,7 +70,7 @@ fun Signup(nav: NavController, signupVM: SignupViewModel) {
 
             // Back → always login_choice
             Row(modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = {
+                DebouncedIconButton(onClick = {
                     nav.navigate("login_choice") { launchSingleTop = true }
                 }) {
                     Icon(
@@ -87,6 +99,12 @@ fun Signup(nav: NavController, signupVM: SignupViewModel) {
                 singleLine = true,
                 shape = InputShape,
                 colors = inputColors(),
+                isError = showErrors && !firstValid,
+                supportingText = {
+                    if (showErrors && !firstValid) {
+                        Text("First name is required.")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -100,6 +118,12 @@ fun Signup(nav: NavController, signupVM: SignupViewModel) {
                 singleLine = true,
                 shape = InputShape,
                 colors = inputColors(),
+                isError = showErrors && !lastValid,
+                supportingText = {
+                    if (showErrors && !lastValid) {
+                        Text("Last name is required.")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -114,6 +138,12 @@ fun Signup(nav: NavController, signupVM: SignupViewModel) {
                 shape = InputShape,
                 colors = inputColors(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                isError = showErrors && !contactValid,
+                supportingText = {
+                    if (showErrors && !contactValid) {
+                        Text("Enter a valid email or 10-digit phone number.")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -139,13 +169,25 @@ fun Signup(nav: NavController, signupVM: SignupViewModel) {
                 },
                 shape = InputShape,
                 colors = inputColors(),
+                isError = showErrors && !passwordValid,
+                supportingText = {
+                    if (showErrors && !passwordValid) {
+                        Text("Password must be at least 6 characters.")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(24.dp))
 
             Button(
-                onClick = { nav.navigate("signup_crossroads") },
+                onClick = {
+                    if (!canContinue) {
+                        showErrors = true
+                        return@Button
+                    }
+                    nav.navigate("signup_crossroads")
+                },
                 modifier = Modifier
                     .fillMaxWidth(0.7f)
                     .height(50.dp),

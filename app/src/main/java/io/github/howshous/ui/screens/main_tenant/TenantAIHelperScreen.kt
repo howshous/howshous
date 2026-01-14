@@ -15,9 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -40,8 +40,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readUidFlow
+import io.github.howshous.ui.theme.NearWhite
 import io.github.howshous.ui.theme.SurfaceLight
+import io.github.howshous.ui.theme.TenantGreen
 import io.github.howshous.ui.theme.inputColors
 import io.github.howshous.ui.viewmodels.MessageAuthor
 import io.github.howshous.ui.viewmodels.TenantAIHelperViewModel
@@ -80,7 +83,7 @@ fun TenantAIHelperScreen(nav: NavController, tenantAIHelperViewModel: TenantAIHe
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { nav.popBackStack() }) {
+                DebouncedIconButton(onClick = { nav.popBackStack() }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
                 Text("AI Boarding House Guide", style = MaterialTheme.typography.titleMedium)
@@ -95,8 +98,8 @@ fun TenantAIHelperScreen(nav: NavController, tenantAIHelperViewModel: TenantAIHe
                 items(messages) { message ->
                     val isTenant = message.author == MessageAuthor.TENANT
                     Surface(
-                        color = if (isTenant) MaterialTheme.colorScheme.primary else Color.White,
-                        contentColor = if (isTenant) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        color = if (isTenant) TenantGreen else NearWhite,
+                        contentColor = if (isTenant) Color.White else MaterialTheme.colorScheme.onSurface,
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -132,7 +135,7 @@ fun TenantAIHelperScreen(nav: NavController, tenantAIHelperViewModel: TenantAIHe
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(SurfaceLight)
                     .padding(16.dp)
             ) {
                 OutlinedTextField(
@@ -155,7 +158,11 @@ fun TenantAIHelperScreen(nav: NavController, tenantAIHelperViewModel: TenantAIHe
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isThinking
+                    enabled = !isThinking,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TenantGreen,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text(if (isThinking) "Thinking..." else "Ask the AI")
                 }

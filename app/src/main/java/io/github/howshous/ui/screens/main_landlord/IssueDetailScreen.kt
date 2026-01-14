@@ -25,6 +25,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import io.github.howshous.data.firestore.IssueRepository
 import io.github.howshous.data.firestore.ListingRepository
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.OverdueRed
 import io.github.howshous.ui.theme.PricePointGreen
@@ -92,7 +93,7 @@ fun IssueDetailScreen(nav: NavController, issueId: String) {
             TopAppBar(
                 title = { Text("Issue Details") },
                 navigationIcon = {
-                    IconButton(onClick = { nav.popBackStack() }) {
+                    DebouncedIconButton(onClick = { nav.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }

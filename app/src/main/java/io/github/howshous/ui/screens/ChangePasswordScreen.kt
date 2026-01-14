@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.theme.SurfaceLight
 import io.github.howshous.ui.theme.InputShape
 import io.github.howshous.ui.theme.inputColors
@@ -47,7 +48,7 @@ fun ChangePasswordScreen(nav: NavController) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { nav.popBackStack() }) {
+            DebouncedIconButton(onClick = { nav.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
             Text("Change Password", style = MaterialTheme.typography.titleMedium)

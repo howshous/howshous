@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import android.content.Context
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.userProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
 
@@ -90,6 +91,11 @@ class SignupViewModel : ViewModel() {
 
         val uid = try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val displayName = "${firstName.value} ${lastName.value}".trim()
+            if (displayName.isNotEmpty()) {
+                val request = userProfileChangeRequest { this.displayName = displayName }
+                result.user?.updateProfile(request)?.await()
+            }
             result.user!!.uid
         } catch (e: Exception) {
             return Result.failure(e)
@@ -161,6 +167,11 @@ class SignupViewModel : ViewModel() {
 
         val uid = try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val displayName = "${firstName.value} ${lastName.value}".trim()
+            if (displayName.isNotEmpty()) {
+                val request = userProfileChangeRequest { this.displayName = displayName }
+                result.user?.updateProfile(request)?.await()
+            }
             result.user!!.uid
         } catch (e: Exception) {
             return Result.failure(e)

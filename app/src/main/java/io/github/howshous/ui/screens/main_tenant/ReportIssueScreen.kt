@@ -18,6 +18,7 @@ import androidx.navigation.NavController
 import io.github.howshous.data.firestore.ChatRepository
 import io.github.howshous.data.firestore.ContractRepository
 import io.github.howshous.data.firestore.ListingRepository
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.InputShape
 import io.github.howshous.ui.theme.SurfaceLight
@@ -79,7 +80,7 @@ fun ReportIssueScreen(nav: NavController) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { nav.popBackStack() }) {
+            DebouncedIconButton(onClick = { nav.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
             Text("Report Issue", style = MaterialTheme.typography.titleLarge)

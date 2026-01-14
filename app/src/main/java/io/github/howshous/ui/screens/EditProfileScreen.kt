@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import io.github.howshous.data.firestore.UserRepository
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.theme.SurfaceLight
 import io.github.howshous.ui.theme.InputShape
 import io.github.howshous.ui.theme.inputColors
@@ -63,7 +64,7 @@ fun EditProfileScreen(nav: NavController) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { nav.popBackStack() }) {
+            DebouncedIconButton(onClick = { nav.popBackStack() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
             }
             Text("Edit Profile", style = MaterialTheme.typography.titleMedium)

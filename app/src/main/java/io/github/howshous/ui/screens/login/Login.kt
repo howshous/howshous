@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.howshous.ui.viewmodels.LoginViewModel
+import io.github.howshous.ui.components.DebouncedIconButton
 
 @Composable
 fun Login(nav: NavController) {
@@ -44,7 +45,7 @@ fun Login(nav: NavController) {
 
         // BACK BUTTON → login_choice
         Row(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = {
+            DebouncedIconButton(onClick = {
                 nav.navigate("login_choice") { launchSingleTop = true }
             }) {
                 Icon(

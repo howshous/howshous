@@ -30,6 +30,7 @@ import io.github.howshous.ui.viewmodels.ChatViewModel
 import io.github.howshous.ui.viewmodels.NotificationViewModel
 import io.github.howshous.ui.viewmodels.AccountViewModel
 import io.github.howshous.ui.util.SampleListingsGenerator
+import io.github.howshous.ui.components.ListingCard
 import kotlinx.coroutines.launch
 
 @Composable
@@ -227,26 +228,13 @@ fun LandlordListings(nav: NavController) {
         } else {
             LazyColumn {
                 items(listings) { listing ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            if (listing.photos.isNotEmpty()) {
-                                AsyncImage(
-                                    model = listing.photos[0],
-                                    contentDescription = listing.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxWidth().height(120.dp)
-                                )
-                                Spacer(Modifier.height(8.dp))
-                            }
-                            Text(listing.title, style = MaterialTheme.typography.titleSmall)
-                            Text(listing.location, style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                Text("₱${listing.price}/month", style = MaterialTheme.typography.labelLarge, color = PricePointGreen)
-                                Text(listing.status, style = MaterialTheme.typography.labelSmall, color = if (listing.status == "active") PricePointGreen else Color.Red)
-                            }
-                        }
-                    }
+                    ListingCard(
+                        listing = listing,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp),
+                        showStatus = true
+                    )
                 }
             }
         }

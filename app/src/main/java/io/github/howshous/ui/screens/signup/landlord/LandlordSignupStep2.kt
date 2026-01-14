@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.howshous.R
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.theme.LandlordBlue
 import io.github.howshous.ui.theme.LandlordBlueDark
 import io.github.howshous.ui.util.saveBitmapToCache
@@ -63,7 +64,7 @@ fun LandlordSignupStep2(nav: NavController, signupVM: SignupViewModel) {
         ) {
 
             Row(modifier = Modifier.fillMaxWidth()) {
-                IconButton(onClick = { nav.popBackStack() }) {
+                DebouncedIconButton(onClick = { nav.popBackStack() }) {
                     Icon(
                         painter = painterResource(R.drawable.i_back),
                         contentDescription = null,

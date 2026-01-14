@@ -27,7 +27,7 @@ import io.github.howshous.ui.viewmodels.AccountViewModel
 import kotlinx.coroutines.launch
 import io.github.howshous.ui.components.SearchBar
 import io.github.howshous.ui.components.NoListingsEmptyState
-import io.github.howshous.ui.theme.PricePointGreen
+import io.github.howshous.ui.components.ListingCard
 
 @Composable
 fun TenantHome(nav: NavController) {
@@ -55,7 +55,7 @@ fun TenantHome(nav: NavController) {
             .fillMaxSize()
             .background(SurfaceLight)
     ) {
-        // Three buttons at the top (always visible)
+        // Two buttons at the top
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -71,17 +71,6 @@ fun TenantHome(nav: NavController) {
                 )
             ) {
                 Text("View Contracts", style = MaterialTheme.typography.labelSmall)
-            }
-
-            // Emergency Button
-            Button(
-                onClick = { nav.navigate("emergency") },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF5252)
-                )
-            ) {
-                Text("Emergency", style = MaterialTheme.typography.labelSmall)
             }
 
             // Report Issue Button (only if has contract)
@@ -120,28 +109,13 @@ fun TenantHome(nav: NavController) {
                         Spacer(Modifier.height(8.dp))
                     }
                     items(listings) { listing ->
-                        Card(
+                        ListingCard(
+                            listing = listing,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp)
-                                .clickable { nav.navigate("listing/${listing.id}") }
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                if (listing.photos.isNotEmpty()) {
-                                    AsyncImage(
-                                        model = listing.photos[0],
-                                        contentDescription = listing.title,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxWidth().height(120.dp)
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                }
-                                Text(listing.title, style = MaterialTheme.typography.titleSmall)
-                                Text(listing.location, style = MaterialTheme.typography.bodySmall)
-                                Spacer(Modifier.height(4.dp))
-                                Text("₱${listing.price}/month", style = MaterialTheme.typography.labelLarge, color = PricePointGreen)
-                            }
-                        }
+                                .padding(vertical = 6.dp),
+                            onClick = { nav.navigate("listing/${listing.id}") }
+                        )
                     }
                 }
             }
@@ -192,28 +166,13 @@ fun TenantSearch(nav: NavController) {
         } else {
             LazyColumn {
                 items(listings) { listing ->
-                    Card(
+                    ListingCard(
+                        listing = listing,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp)
-                            .clickable { nav.navigate("listing/${listing.id}") }
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            if (listing.photos.isNotEmpty()) {
-                                AsyncImage(
-                                    model = listing.photos[0],
-                                    contentDescription = listing.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxWidth().height(120.dp)
-                                )
-                                Spacer(Modifier.height(8.dp))
-                            }
-                            Text(listing.title, style = MaterialTheme.typography.titleSmall)
-                            Text(listing.location, style = MaterialTheme.typography.bodySmall)
-                            Spacer(Modifier.height(4.dp))
-                            Text("₱${listing.price}/month", style = MaterialTheme.typography.labelLarge, color = PricePointGreen)
-                        }
-                    }
+                            .padding(vertical = 6.dp),
+                        onClick = { nav.navigate("listing/${listing.id}") }
+                    )
                 }
             }
         }

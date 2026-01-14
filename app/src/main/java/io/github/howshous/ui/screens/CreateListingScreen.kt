@@ -19,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -39,15 +38,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import coil.compose.AsyncImage
 import io.github.howshous.data.models.Listing
 import io.github.howshous.data.firestore.ListingRepository
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readUidFlow
 import io.github.howshous.ui.theme.InputShape
 import io.github.howshous.ui.theme.SurfaceLight
 import io.github.howshous.ui.theme.inputColors
+import io.github.howshous.ui.util.saveBitmapToCache
+import io.github.howshous.ui.util.uploadCompressedImage
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +68,7 @@ fun CreateListingScreen(nav: NavController) {
     var selectedAmenities by remember { mutableStateOf(setOf<String>()) }
     var isSubmitting by remember { mutableStateOf(false) }
     var locationExpanded by remember { mutableStateOf(false) }
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     
     val baguioLocations = listOf(
         "Baguio City Center",
@@ -106,6 +114,18 @@ fun CreateListingScreen(nav: NavController) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val listingRepository = remember { ListingRepository() }
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedPhotoUri = uri
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            selectedPhotoUri = saveBitmapToCache(context, bitmap)
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -122,7 +142,7 @@ fun CreateListingScreen(nav: NavController) {
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { nav.popBackStack() }) {
+                DebouncedIconButton(onClick = { nav.popBackStack() }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                 }
                 Text("Create Listing", style = MaterialTheme.typography.titleMedium)
@@ -239,6 +259,45 @@ fun CreateListingScreen(nav: NavController) {
 
                 Spacer(Modifier.height(24.dp))
 
+                Text(
+                    text = "Listing Photo",
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { cameraLauncher.launch(null) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Take Photo")
+                    }
+
+                    Button(
+                        onClick = { photoPicker.launch("image/*") },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (selectedPhotoUri == null) "Choose Photo" else "Change Photo")
+                    }
+                }
+
+                if (selectedPhotoUri != null) {
+                    Spacer(Modifier.height(12.dp))
+                    AsyncImage(
+                        model = selectedPhotoUri,
+                        contentDescription = "Listing photo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
                 Button(
                     onClick = {
                         if (isSubmitting) return@Button
@@ -270,9 +329,27 @@ fun CreateListingScreen(nav: NavController) {
                                         price = priceValue,
                                         deposit = depositValue,
                                         status = "active",
-                                        amenities = selectedAmenities.toList()
+                                        amenities = selectedAmenities.toList(),
+                                        photos = emptyList()
                                     )
                                     val newId = listingRepository.createListing(listing)
+                                    if (newId.isNotEmpty() && selectedPhotoUri != null) {
+                                        try {
+                                            val photoUrl = uploadCompressedImage(
+                                                context,
+                                                selectedPhotoUri!!,
+                                                "listing_uploads/$newId/cover.jpg"
+                                            )
+                                            if (photoUrl.isNotBlank()) {
+                                                listingRepository.updateListing(
+                                                    newId,
+                                                    mapOf("photos" to listOf(photoUrl))
+                                                )
+                                            }
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar("Photo upload failed. Listing saved without photo.")
+                                        }
+                                    }
                                     isSubmitting = false
                                     if (newId.isNotEmpty()) {
                                         nav.previousBackStackEntry

@@ -22,7 +22,8 @@ class LoginViewModel : ViewModel() {
 
             result.onSuccess { uid ->
                 nav.navigate("dashboard_router") {
-                    popUpTo("login") { inclusive = true }
+                    popUpTo("login_choice") { inclusive = true }
+                    launchSingleTop = true
                 }
             }
 

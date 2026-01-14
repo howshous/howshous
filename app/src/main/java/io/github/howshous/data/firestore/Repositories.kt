@@ -15,7 +15,19 @@ class UserRepository {
     suspend fun getUserProfile(uid: String): UserProfile? {
         return try {
             val doc = db.collection("users").document(uid).get().await()
-            doc.toObject(UserProfile::class.java)?.copy(uid = doc.id)
+            val profile = doc.toObject(UserProfile::class.java)?.copy(uid = doc.id) ?: return null
+
+            val verificationDoc = db.collection("verifications").document(uid).get().await()
+            val status = verificationDoc.getString("status")?.lowercase()
+            val verifiedFlag = verificationDoc.getBoolean("verified") ?: false
+            val isVerified = verifiedFlag || status == "approved" || status == "verified" || status == "accepted"
+
+            if (isVerified && !profile.verified) {
+                db.collection("users").document(uid).update("verified", true).await()
+                return profile.copy(verified = true)
+            }
+
+            profile
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -93,6 +105,14 @@ class ListingRepository {
         } catch (e: Exception) {
             e.printStackTrace()
             ""
+        }
+    }
+
+    suspend fun updateListing(id: String, updates: Map<String, Any>) {
+        try {
+            db.collection("listings").document(id).update(updates).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }
