@@ -14,3 +14,11 @@
 .cxx
 local.properties
 *.md
+firestore-debug.log
+# debug logs
+firestore-debug.log
+firebase-debug.log
+
+# debug logs
+firestore-debug.log
+firebase-debug.log
