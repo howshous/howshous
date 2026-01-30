@@ -3,6 +3,8 @@ package io.github.howshous.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.howshous.data.firestore.ListingRepository
+import io.github.howshous.data.firestore.AnalyticsRepository
+import io.github.howshous.data.firestore.SavedListingsRepository
 import io.github.howshous.data.models.Listing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,6 +12,7 @@ import kotlinx.coroutines.launch
 
 class TenantSearchViewModel : ViewModel() {
     private val listingRepo = ListingRepository()
+    private val analyticsRepo = AnalyticsRepository()
 
     private val _allListings = MutableStateFlow<List<Listing>>(emptyList())
     val allListings: StateFlow<List<Listing>> = _allListings
@@ -98,6 +101,27 @@ class TenantSearchViewModel : ViewModel() {
         _filteredListings.value = listings
         _isLoading.value = false
     }
+
+    fun logCurrentFilters(
+        userId: String,
+        sessionId: String?
+    ) {
+        viewModelScope.launch {
+            val query = _searchQuery.value.trim()
+            val minPrice = _minPriceInput.value.toIntOrNull()
+            val maxPrice = _maxPriceInput.value.toIntOrNull()
+            val amenities = _selectedAmenities.value
+
+            analyticsRepo.logSearchFilters(
+                userId = userId,
+                sessionId = sessionId,
+                hasQuery = query.isNotEmpty(),
+                minPrice = minPrice,
+                maxPrice = maxPrice,
+                amenities = amenities
+            )
+        }
+    }
 }
 
 class LandlordListingsViewModel : ViewModel() {
@@ -132,12 +156,20 @@ class LandlordListingsViewModel : ViewModel() {
 
 class ListingViewModel : ViewModel() {
     private val listingRepo = ListingRepository()
+    private val analyticsRepo = AnalyticsRepository()
+    private val savedRepo = SavedListingsRepository()
+
+    // Tracks which listings have already been logged as viewed in this ViewModel's lifetime
+    private val viewedInSession: MutableSet<String> = mutableSetOf()
 
     private val _listing = MutableStateFlow<Listing?>(null)
     val listing: StateFlow<Listing?> = _listing
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isSaved = MutableStateFlow(false)
+    val isSaved: StateFlow<Boolean> = _isSaved
 
     fun loadListing(listingId: String) {
         if (listingId.isBlank()) {
@@ -159,11 +191,61 @@ class ListingViewModel : ViewModel() {
         }
     }
 
-    fun recordUniqueView(listingId: String, viewerId: String) {
+    fun loadSavedState(listingId: String, userId: String) {
+        if (listingId.isBlank() || userId.isBlank()) return
+        viewModelScope.launch {
+            _isSaved.value = savedRepo.isListingSaved(userId, listingId)
+        }
+    }
+
+    fun toggleSave(
+        listingId: String,
+        userId: String,
+        sessionId: String?
+    ) {
+        val current = _listing.value
+        if (listingId.isBlank() || userId.isBlank() || current == null) return
+
+        viewModelScope.launch {
+            val nowSaved = !_isSaved.value
+            if (nowSaved) {
+                savedRepo.saveListing(userId, listingId, current.price)
+                analyticsRepo.logListingSave(
+                    listingId = listingId,
+                    landlordId = current.landlordId,
+                    userId = userId,
+                    sessionId = sessionId,
+                    price = current.price
+                )
+            } else {
+                savedRepo.unsaveListing(userId, listingId)
+            }
+            _isSaved.value = nowSaved
+        }
+    }
+
+    fun recordUniqueViewWithAnalytics(
+        listingId: String,
+        viewerId: String,
+        sessionId: String?,
+        price: Int?
+    ) {
         if (listingId.isBlank() || viewerId.isBlank()) return
+        if (viewedInSession.contains(listingId)) return
+
+        val current = _listing.value
+        if (current == null || current.id != listingId) return
 
         viewModelScope.launch {
             listingRepo.recordUniqueView(listingId, viewerId)
+            analyticsRepo.logListingView(
+                listingId = listingId,
+                landlordId = current.landlordId,
+                userId = viewerId,
+                sessionId = sessionId,
+                price = price
+            )
+            viewedInSession.add(listingId)
         }
     }
 }

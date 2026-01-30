@@ -129,6 +129,7 @@ fun InitiateChatScreen(nav: NavController, listingId: String = "", landlordId: S
                             }
 
                             if (chatId.isNotEmpty()) {
+                                isLoading = false
                                 nav.navigate("chat/$chatId") {
                                     popUpTo("initiate_chat/$listingId/$landlordId") { inclusive = true }
                                 }

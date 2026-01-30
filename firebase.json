@@ -1,6 +1,9 @@
 {
   "emulators": {
     "singleProjectMode": true,
+    "functions": {
+      "port": 5001
+    },
     "auth": {
       "port": 9100
     },
@@ -14,6 +17,9 @@
       "enabled": true,
       "port": 4001
     }
+  },
+  "functions": {
+    "source": "functions"
   },
   "firestore": {
     "database": "(default)",

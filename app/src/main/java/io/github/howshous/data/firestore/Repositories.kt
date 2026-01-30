@@ -172,6 +172,7 @@ class ListingRepository {
 
 class ChatRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val analyticsRepo = AnalyticsRepository()
 
     suspend fun getChatsForUser(userId: String): List<Chat> {
         return try {
@@ -224,15 +225,35 @@ class ChatRepository {
                 chatId = chatId,
                 timestamp = timestamp
             )
+            val chatRef = db.collection("chats").document(chatId)
+            val messagesRef = chatRef.collection("messages")
+
+            // Determine if this is the first message in this chat (for this listing)
+            val existingMessages = messagesRef.limit(1).get().await()
+            val isFirstMessageInChat = existingMessages.isEmpty
+
             // Save message
-            db.collection("chats").document(chatId).collection("messages").add(message).await()
+            messagesRef.add(message).await()
             // Update chat's lastMessage and lastTimestamp
-            db.collection("chats").document(chatId).update(
+            chatRef.update(
                 mapOf(
                     "lastMessage" to text,
                     "lastTimestamp" to timestamp
                 )
             ).await()
+
+            // Log analytics only for the *first* message for this chat/listing
+            if (isFirstMessageInChat) {
+                val chatDoc = chatRef.get().await()
+                val listingId = chatDoc.getString("listingId") ?: ""
+                val landlordId = chatDoc.getString("landlordId") ?: ""
+                analyticsRepo.logMessageSent(
+                    chatId = chatId,
+                    listingId = listingId,
+                    landlordId = landlordId,
+                    senderId = senderId
+                )
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }

@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,7 @@ import io.github.howshous.R
 import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readRoleFlow
 import io.github.howshous.ui.data.readUidFlow
+import io.github.howshous.ui.data.ensureSessionId
 import io.github.howshous.ui.theme.PricePointGreen
 import io.github.howshous.ui.theme.SurfaceLight
 import io.github.howshous.ui.viewmodels.ListingViewModel
@@ -35,14 +38,33 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
     val viewModel: ListingViewModel = viewModel()
     val listing by viewModel.listing.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isSaved by viewModel.isSaved.collectAsState()
+    var sessionId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(listingId) {
+    LaunchedEffect(listingId, uid) {
         viewModel.loadListing(listingId)
+        if (uid.isNotBlank()) {
+            viewModel.loadSavedState(listingId, uid)
+        }
     }
 
-    LaunchedEffect(listingId, uid, role) {
-        if (role == "tenant") {
-            viewModel.recordUniqueView(listingId, uid)
+    LaunchedEffect(Unit) {
+        sessionId = ensureSessionId(context)
+    }
+
+    LaunchedEffect(listingId, uid, role, listing, sessionId) {
+        val currentListing = listing
+        val currentSessionId = sessionId
+        if (role == "tenant" && uid.isNotBlank() && currentListing != null && currentSessionId != null) {
+            // Only count as a view if the detail screen stays visible for a short time window.
+            // This helps avoid counting very quick scroll-past or accidental opens.
+            kotlinx.coroutines.delay(2500)
+            viewModel.recordUniqueViewWithAnalytics(
+                listingId = listingId,
+                viewerId = uid,
+                sessionId = currentSessionId,
+                price = currentListing.price
+            )
         }
     }
 
@@ -56,12 +78,40 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            DebouncedIconButton(onClick = { nav.popBackStack() }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DebouncedIconButton(onClick = { nav.popBackStack() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                }
+                Spacer(Modifier.width(8.dp))
+                Text("Listing Details", style = MaterialTheme.typography.titleMedium)
             }
-            Text("Listing Details", style = MaterialTheme.typography.titleMedium)
+            if (role == "tenant" && listing != null && uid.isNotBlank()) {
+                IconButton(
+                    onClick = {
+                        viewModel.toggleSave(
+                            listingId = listingId,
+                            userId = uid,
+                            sessionId = sessionId
+                        )
+                    }
+                ) {
+                    if (isSaved) {
+                        Icon(
+                            imageVector = Icons.Filled.Favorite,
+                            contentDescription = "Unsave",
+                            tint = PricePointGreen
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.FavoriteBorder,
+                            contentDescription = "Save"
+                        )
+                    }
+                }
+            }
         }
 
         if (isLoading) {

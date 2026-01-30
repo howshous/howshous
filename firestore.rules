@@ -18,6 +18,20 @@ service cloud.firestore {
         && request.resource.data.uniqueViewCount == currentViews + 1;
     }
 
+    // Raw analytics events: clients can write, but never read.
+    match /events/{eventId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false;
+    }
+
+    // Daily listing stats: landlords can read and write their own stats (e.g. seed data when using emulator without Functions).
+    match /listing_daily_stats/{listingId} {
+      match /days/{date} {
+        allow read, create, update: if isLandlordForListing(listingId);
+        allow delete: if false;
+      }
+    }
+
     match /listings/{listingId} {
       allow read: if true;
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
@@ -39,6 +53,10 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isSignedIn() && request.auth.uid == userId;
       allow delete: if false;
+
+      match /saved_listings/{listingId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     match /verifications/{userId} {
@@ -46,6 +64,64 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isSignedIn() && request.auth.uid == userId;
       allow delete: if false;
+    }
+
+    function isChatParticipant(chatData) {
+      return isSignedIn()
+        && (chatData.tenantId == request.auth.uid || chatData.landlordId == request.auth.uid);
+    }
+
+    match /chats/{chatId} {
+      allow create: if isSignedIn()
+        && request.resource.data.tenantId == request.auth.uid
+        && request.resource.data.landlordId != null
+        && request.resource.data.listingId != null;
+      allow read, update: if isSignedIn()
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && (get(/databases/$(database)/documents/chats/$(chatId)).data.tenantId == request.auth.uid
+              || get(/databases/$(database)/documents/chats/$(chatId)).data.landlordId == request.auth.uid);
+        allow create: if isSignedIn()
+          && (get(/databases/$(database)/documents/chats/$(chatId)).data.tenantId == request.auth.uid
+              || get(/databases/$(database)/documents/chats/$(chatId)).data.landlordId == request.auth.uid)
+          && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /contracts/{contractId} {
+      allow read: if isSignedIn()
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow create: if isSignedIn()
+        && (request.resource.data.tenantId == request.auth.uid || request.resource.data.landlordId == request.auth.uid);
+      allow update: if isSignedIn()
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow delete: if false;
+    }
+
+    match /issues/{issueId} {
+      allow read: if isSignedIn()
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.tenantId == request.auth.uid;
+      allow update: if isSignedIn()
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow delete: if false;
+    }
+
+    match /rentals/{rentalId} {
+      allow read: if isSignedIn()
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow create, update, delete: if false;
     }
   }
 }

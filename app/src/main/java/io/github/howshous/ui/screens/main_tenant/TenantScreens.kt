@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import io.github.howshous.ui.data.readUidFlow
+import io.github.howshous.ui.data.ensureSessionId
 import io.github.howshous.ui.theme.SurfaceLight
 import io.github.howshous.ui.viewmodels.HomeViewModel
 import io.github.howshous.ui.viewmodels.TenantSearchViewModel
@@ -130,6 +131,8 @@ fun TenantHome(nav: NavController) {
 
 @Composable
 fun TenantSearch(nav: NavController) {
+    val context = LocalContext.current
+    val uid by readUidFlow(context).collectAsState(initial = "")
     val viewModel: TenantSearchViewModel = viewModel()
     val isLoading by viewModel.isLoading.collectAsState()
     val query by viewModel.searchQuery.collectAsState()
@@ -137,6 +140,12 @@ fun TenantSearch(nav: NavController) {
     val maxPriceInput by viewModel.maxPriceInput.collectAsState()
     val selectedAmenities by viewModel.selectedAmenities.collectAsState()
     val listings by viewModel.filteredListings.collectAsState()
+    val scope = rememberCoroutineScope()
+    var sessionId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        sessionId = ensureSessionId(context)
+    }
 
     val availableAmenities = listOf(
         "Free Parking", "WiFi", "Air Conditioning", "Pets Allowed",
@@ -172,7 +181,15 @@ fun TenantSearch(nav: NavController) {
 
         SearchBar(
             query = query,
-            onQueryChange = { viewModel.searchByLocation(it) },
+            onQueryChange = {
+                viewModel.searchByLocation(it)
+                scope.launch {
+                    viewModel.logCurrentFilters(
+                        userId = uid,
+                        sessionId = sessionId
+                    )
+                }
+            },
             placeholder = "Search by location..."
         )
         Spacer(Modifier.height(16.dp))
@@ -197,7 +214,15 @@ fun TenantSearch(nav: NavController) {
         ) {
             OutlinedTextField(
                 value = minPriceInput,
-                onValueChange = { viewModel.updateMinPriceInput(it) },
+                onValueChange = {
+                    viewModel.updateMinPriceInput(it)
+                    scope.launch {
+                        viewModel.logCurrentFilters(
+                            userId = uid,
+                            sessionId = sessionId
+                        )
+                    }
+                },
                 label = { Text("Min Price") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = io.github.howshous.ui.theme.InputShape,
@@ -206,7 +231,15 @@ fun TenantSearch(nav: NavController) {
             )
             OutlinedTextField(
                 value = maxPriceInput,
-                onValueChange = { viewModel.updateMaxPriceInput(it) },
+                onValueChange = {
+                    viewModel.updateMaxPriceInput(it)
+                    scope.launch {
+                        viewModel.logCurrentFilters(
+                            userId = uid,
+                            sessionId = sessionId
+                        )
+                    }
+                },
                 label = { Text("Max Price") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = io.github.howshous.ui.theme.InputShape,
@@ -226,7 +259,15 @@ fun TenantSearch(nav: NavController) {
                 AmenityFilterChip(
                     label = amenity,
                     selected = selectedAmenities.contains(amenity),
-                    onSelectedChange = { viewModel.toggleAmenity(amenity) }
+                    onSelectedChange = {
+                        viewModel.toggleAmenity(amenity)
+                        scope.launch {
+                            viewModel.logCurrentFilters(
+                                userId = uid,
+                                sessionId = sessionId
+                            )
+                        }
+                    }
                 )
             }
         }
@@ -245,7 +286,15 @@ fun TenantSearch(nav: NavController) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 6.dp),
-                        onClick = { nav.navigate("listing/${listing.id}") },
+                        onClick = {
+                            scope.launch {
+                                viewModel.logCurrentFilters(
+                                    userId = uid,
+                                    sessionId = sessionId
+                                )
+                            }
+                            nav.navigate("listing/${listing.id}")
+                        },
                         showViews = true
                     )
                 }
