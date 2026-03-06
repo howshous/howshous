@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import io.github.howshous.R
+import io.github.howshous.ui.theme.AdminPower
 import io.github.howshous.ui.theme.LandlordBlue
 import io.github.howshous.ui.theme.TenantGreen
 
@@ -21,12 +22,14 @@ fun TopBar(
     val backgroundColor = when (role) {
         "tenant" -> TenantGreen
         "landlord" -> LandlordBlue
+        "administrator" -> AdminPower
         else -> TenantGreen
     }
     
     val roleDisplayName = when (role) {
         "tenant" -> "Tenant"
         "landlord" -> "Landlord"
+        "administrator" -> "Administrator"
         else -> "User"
     }
 

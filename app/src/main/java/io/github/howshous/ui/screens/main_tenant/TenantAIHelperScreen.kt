@@ -201,6 +201,7 @@ private fun parseAiMessage(text: String): ParsedAiMessage {
 
     val ids = mutableListOf<String>()
     val recommendations = mutableListOf<AiRecommendation>()
+    val spansToRemove = mutableListOf<IntRange>()
 
     jsonBlockRegex.findAll(text).forEach { match ->
         val jsonText = match.groupValues.getOrNull(1)?.trim().orEmpty()
@@ -208,6 +209,20 @@ private fun parseAiMessage(text: String): ParsedAiMessage {
             recommendations.addAll(recs)
             recs.forEach { rec ->
                 if (rec.id.isNotBlank()) ids.add(rec.id)
+            }
+        }
+        spansToRemove.add(match.range)
+    }
+
+    if (recommendations.isEmpty()) {
+        extractJsonCandidates(text).forEach { candidate ->
+            val recs = parseRecommendationsFromJson(candidate.text).orEmpty()
+            if (recs.isNotEmpty()) {
+                recommendations.addAll(recs)
+                recs.forEach { rec ->
+                    if (rec.id.isNotBlank()) ids.add(rec.id)
+                }
+                spansToRemove.add(candidate.start..(candidate.endExclusive - 1))
             }
         }
     }
@@ -223,8 +238,7 @@ private fun parseAiMessage(text: String): ParsedAiMessage {
         }
     }
 
-    val cleaned = text
-        .replace(jsonBlockRegex, "")
+    val cleaned = removeSpans(text, spansToRemove)
         .replace(tagRegex, "")
         .replace(idLineRegex, "")
         .replace(Regex("\\n{3,}"), "\n\n")
@@ -246,12 +260,12 @@ private data class AiRecommendation(
 )
 
 private fun parseRecommendationsFromJson(jsonText: String): List<AiRecommendation>? {
-    return runCatching {
-        val root = JSONObject(jsonText)
-        val array = root.optJSONArray("recommendations") ?: root.optJSONArray("listings") ?: return emptyList()
-        (0 until array.length()).mapNotNull { index ->
-            val obj = array.optJSONObject(index) ?: return@mapNotNull null
-            AiRecommendation(
+    return try {
+        val trimmed = jsonText.trim()
+        if (trimmed.isEmpty()) return emptyList()
+
+        fun recFromObj(obj: JSONObject): AiRecommendation {
+            return AiRecommendation(
                 id = obj.optString("id", ""),
                 title = obj.optString("title", ""),
                 price = obj.optInt("price", 0),
@@ -259,13 +273,115 @@ private fun parseRecommendationsFromJson(jsonText: String): List<AiRecommendatio
                 amenities = obj.optJSONArray("amenities")?.toStringList().orEmpty()
             )
         }
-    }.getOrNull()
+
+        fun recsFromArray(array: JSONArray): List<AiRecommendation> {
+            return (0 until array.length()).mapNotNull { index ->
+                val obj = array.optJSONObject(index) ?: return@mapNotNull null
+                recFromObj(obj)
+            }
+        }
+
+        if (trimmed.startsWith("[")) {
+            return recsFromArray(JSONArray(trimmed))
+        }
+
+        val root = JSONObject(trimmed)
+        val array = root.optJSONArray("recommendations") ?: root.optJSONArray("listings")
+        if (array != null) return recsFromArray(array)
+
+        if (root.has("title") || root.has("price") || root.has("location")) {
+            return listOf(recFromObj(root))
+        }
+        emptyList()
+    } catch (_: Exception) {
+        null
+    }
 }
 
 private fun JSONArray.toStringList(): List<String> {
     return (0 until length()).mapNotNull { idx ->
         optString(idx, null)
     }
+}
+
+private data class JsonCandidate(
+    val text: String,
+    val start: Int,
+    val endExclusive: Int
+)
+
+private fun extractJsonCandidates(text: String): List<JsonCandidate> {
+    val candidates = mutableListOf<JsonCandidate>()
+    var depth = 0
+    var start = -1
+    var inString = false
+    var escaping = false
+
+    for (i in text.indices) {
+        val c = text[i]
+        if (inString) {
+            if (escaping) {
+                escaping = false
+            } else if (c == '\\') {
+                escaping = true
+            } else if (c == '"') {
+                inString = false
+            }
+            continue
+        }
+
+        when (c) {
+            '"' -> inString = true
+            '{' -> {
+                if (depth == 0) start = i
+                depth++
+            }
+            '}' -> {
+                if (depth > 0) {
+                    depth--
+                    if (depth == 0 && start >= 0) {
+                        candidates.add(JsonCandidate(text.substring(start, i + 1), start, i + 1))
+                        start = -1
+                    }
+                }
+            }
+        }
+    }
+
+    return candidates
+}
+
+private fun removeSpans(text: String, spans: List<IntRange>): String {
+    if (spans.isEmpty()) return text
+
+    val merged = spans
+        .sortedBy { it.first }
+        .fold(mutableListOf<IntRange>()) { acc, range ->
+            if (acc.isEmpty()) {
+                acc.add(range)
+            } else {
+                val last = acc.last()
+                if (range.first <= last.last + 1) {
+                    acc[acc.lastIndex] = last.first..maxOf(last.last, range.last)
+                } else {
+                    acc.add(range)
+                }
+            }
+            acc
+        }
+
+    val sb = StringBuilder()
+    var index = 0
+    for (range in merged) {
+        if (index < range.first) {
+            sb.append(text.substring(index, range.first))
+        }
+        index = range.last + 1
+    }
+    if (index < text.length) {
+        sb.append(text.substring(index))
+    }
+    return sb.toString()
 }
 
 @Composable

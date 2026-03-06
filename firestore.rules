@@ -6,6 +6,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true
+        || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "administrator"
+        )
+      );
+    }
+
+    function isListingPublic(listingData) {
+      return (listingData.reviewStatus == "approved"
+        || !listingData.keys().hasAny(["reviewStatus"]))
+        && listingData.status != "removed";
+    }
+
+    function isSampleAdminBootstrap() {
+      return request.resource.data.role == "administrator"
+        && request.resource.data.email == "aa@hh.com"
+        && request.resource.data.firstName == "Annie"
+        && request.resource.data.lastName == "Admin";
+    }
+
     function isLandlordForListing(listingId) {
       return isSignedIn()
         && get(/databases/$(database)/documents/listings/$(listingId)).data.landlordId == request.auth.uid;
@@ -39,10 +62,23 @@ service cloud.firestore {
     }
 
     match /listings/{listingId} {
-      allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      allow update: if isSignedIn() && (isLandlordForListing(listingId) || isUniqueViewIncrement());
-      allow delete: if isSignedIn() && isLandlordForListing(listingId);
+      allow read: if isListingPublic(resource.data)
+        || isAdmin()
+        || (isSignedIn() && resource.data.landlordId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.landlordId == request.auth.uid
+        && request.resource.data.reviewStatus == "under_review";
+      allow update: if isSignedIn() && (
+          isAdmin()
+          || isUniqueViewIncrement()
+          || (
+            isLandlordForListing(listingId)
+            && request.resource.data.reviewStatus != "approved"
+            && request.resource.data.reviewStatus != "rejected"
+            && request.resource.data.reviewStatus != "taken_down"
+          )
+        );
+      allow delete: if isSignedIn() && (isLandlordForListing(listingId) || isAdmin());
 
       match /views/{viewerId} {
         allow read: if isSignedIn()
@@ -55,10 +91,19 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn()
-        && (request.auth.uid == userId || resource.data.role == "landlord");
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isAdmin() || (isSignedIn()
+        && (request.auth.uid == userId || resource.data.role == "landlord"));
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && (
+          request.resource.data.role in ["tenant", "landlord"]
+          || isSampleAdminBootstrap()
+        );
+      allow update: if isAdmin() || (
+          isSignedIn()
+          && request.auth.uid == userId
+          && !request.resource.data.diff(resource.data).changedKeys().hasAny(["role", "isBanned", "bannedAt", "bannedBy", "banReason"])
+        );
       allow delete: if false;
 
       match /saved_listings/{listingId} {
@@ -109,6 +154,20 @@ service cloud.firestore {
         );
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow delete: if false;
+    }
+
+    match /aiChats/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if false;
+      allow update, delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.userId == userId;
+        allow update, delete: if false;
+      }
     }
 
     match /contracts/{contractId} {

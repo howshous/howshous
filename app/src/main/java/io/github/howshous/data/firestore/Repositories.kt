@@ -58,14 +58,89 @@ class UserRepository {
             ""
         }
     }
+
+    suspend fun getAllUsers(limit: Long = 200): List<UserProfile> {
+        return try {
+            val snap = db.collection("users")
+                .limit(limit)
+                .get()
+                .await()
+            snap.documents.mapNotNull { doc ->
+                doc.toObject(UserProfile::class.java)?.copy(uid = doc.id)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun setUserBanStatus(
+        uid: String,
+        banned: Boolean,
+        adminUid: String,
+        reason: String = ""
+    ) {
+        try {
+            val updates = if (banned) {
+                mapOf(
+                    "isBanned" to true,
+                    "bannedAt" to Timestamp.now(),
+                    "bannedBy" to adminUid,
+                    "banReason" to reason
+                )
+            } else {
+                mapOf(
+                    "isBanned" to false,
+                    "bannedAt" to null,
+                    "bannedBy" to "",
+                    "banReason" to ""
+                )
+            }
+            db.collection("users").document(uid).update(updates).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }
 
 class ListingRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val publicStatuses = listOf("active", "full", "maintenance")
 
     suspend fun getAllListings(): List<Listing> {
         return try {
+            val snap = db.collection("listings")
+                .whereEqualTo("reviewStatus", "approved")
+                .whereIn("status", publicStatuses)
+                .get()
+                .await()
+            snap.documents.mapNotNull { doc ->
+                doc.toObject(Listing::class.java)?.copy(id = doc.id)
+            }.filter { it.status != "removed" }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun getAllListingsForAdmin(): List<Listing> {
+        return try {
             val snap = db.collection("listings").get().await()
+            snap.documents.mapNotNull { doc ->
+                doc.toObject(Listing::class.java)?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun getListingsUnderReview(): List<Listing> {
+        return try {
+            val snap = db.collection("listings")
+                .whereEqualTo("reviewStatus", "under_review")
+                .get()
+                .await()
             snap.documents.mapNotNull { doc ->
                 doc.toObject(Listing::class.java)?.copy(id = doc.id)
             }
@@ -79,11 +154,13 @@ class ListingRepository {
         return try {
             val snap = db.collection("listings")
                 .whereEqualTo("location", location)
+                .whereEqualTo("reviewStatus", "approved")
+                .whereIn("status", publicStatuses)
                 .get()
                 .await()
             snap.documents.mapNotNull { doc ->
                 doc.toObject(Listing::class.java)?.copy(id = doc.id)
-            }
+            }.filter { it.status != "removed" }
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
@@ -117,11 +194,18 @@ class ListingRepository {
 
     suspend fun createListing(listing: Listing): String {
         return try {
+            val forWrite = listing.copy(
+                id = "",
+                reviewStatus = "under_review",
+                reviewedAt = null,
+                reviewedBy = "",
+                reviewNotes = ""
+            )
             if (listing.id.isNotBlank()) {
-                db.collection("listings").document(listing.id).set(listing.copy(id = "")).await()
+                db.collection("listings").document(listing.id).set(forWrite).await()
                 listing.id
             } else {
-                val ref = db.collection("listings").add(listing.copy(id = "")).await()
+                val ref = db.collection("listings").add(forWrite).await()
                 ref.id
             }
         } catch (e: Exception) {
@@ -188,6 +272,44 @@ class ListingRepository {
             e.printStackTrace()
         }
     }
+
+    suspend fun approveListing(listingId: String, adminUid: String, notes: String = "") {
+        updateListing(
+            listingId,
+            mapOf(
+                "reviewStatus" to "approved",
+                "reviewedAt" to Timestamp.now(),
+                "reviewedBy" to adminUid,
+                "reviewNotes" to notes
+            )
+        )
+    }
+
+    suspend fun rejectListing(listingId: String, adminUid: String, notes: String = "") {
+        updateListing(
+            listingId,
+            mapOf(
+                "reviewStatus" to "rejected",
+                "reviewedAt" to Timestamp.now(),
+                "reviewedBy" to adminUid,
+                "reviewNotes" to notes
+            )
+        )
+    }
+
+    suspend fun takeDownListing(listingId: String, adminUid: String, notes: String = "") {
+        updateListing(
+            listingId,
+            mapOf(
+                "reviewStatus" to "taken_down",
+                "reviewedAt" to Timestamp.now(),
+                "reviewedBy" to adminUid,
+                "reviewNotes" to notes,
+                "status" to "removed"
+            )
+        )
+    }
+
 }
 
 class ChatRepository {
@@ -471,6 +593,7 @@ class NotificationRepository {
             e.printStackTrace()
         }
     }
+
 }
 
 class RentalRepository {
@@ -505,6 +628,7 @@ class RentalRepository {
             emptyList()
         }
     }
+
 }
 
 class TenancyRepository {
@@ -580,4 +704,5 @@ class TenancyRepository {
             e.printStackTrace()
         }
     }
+
 }

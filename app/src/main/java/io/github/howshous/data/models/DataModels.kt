@@ -9,6 +9,10 @@ data class UserProfile(
     val email: String = "",
     val phone: String = "",
     val role: String = "tenant",
+    val isBanned: Boolean = false,
+    val bannedAt: Timestamp? = null,
+    val bannedBy: String = "",
+    val banReason: String = "",
     val verified: Boolean = false,
     val profileImageUrl: String = "",
     val businessPermitUrl: String = "",
@@ -25,6 +29,10 @@ data class Listing(
     val deposit: Int = 0,
     val capacity: Int = 1,
     val status: String = "active", // active, full, maintenance
+    val reviewStatus: String = "approved", // under_review, approved, rejected, taken_down
+    val reviewedAt: Timestamp? = null,
+    val reviewedBy: String = "",
+    val reviewNotes: String = "",
     val photos: List<String> = emptyList(),
     val amenities: List<String> = emptyList(),
     val landDeedUrl: String = "",

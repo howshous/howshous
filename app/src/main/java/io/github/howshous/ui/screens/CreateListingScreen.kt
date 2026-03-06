@@ -677,7 +677,7 @@ fun CreateListingScreen(nav: NavController) {
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
                             } else {
-                                Text("Create Listing")
+                                Text("Submit for Review")
                             }
                         }
                     }

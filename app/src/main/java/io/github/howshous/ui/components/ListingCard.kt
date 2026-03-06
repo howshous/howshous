@@ -131,9 +131,15 @@ fun ListingCard(
             }
 
             if (showStatus) {
-                val statusColor = if (listing.status == "active") PricePointGreen else slightlyGray
+                val displayStatus = if (listing.reviewStatus != "approved") listing.reviewStatus else listing.status
+                val statusColor = when (displayStatus) {
+                    "active", "approved" -> PricePointGreen
+                    "under_review" -> Color(0xFFE27D23)
+                    "rejected", "taken_down", "removed" -> Color(0xFFB00020)
+                    else -> slightlyGray
+                }
                 Text(
-                    listing.status.uppercase(),
+                    displayStatus.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     color = statusColor
                 )

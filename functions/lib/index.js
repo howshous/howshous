@@ -4,10 +4,11 @@ exports.onAnalyticsEventCreate = exports.ANALYTICS_EVENT_TYPES = void 0;
 exports.processAnalyticsEvent = processAnalyticsEvent;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
+const firestore_1 = require("firebase-admin/firestore");
 if (admin.apps.length === 0) {
     admin.initializeApp();
 }
-const db = admin.firestore();
+const db = (0, firestore_1.getFirestore)();
 exports.ANALYTICS_EVENT_TYPES = {
     LISTING_VIEW: "LISTING_VIEW",
     LISTING_SAVE: "LISTING_SAVE",
@@ -29,7 +30,7 @@ const ALLOWED_AMENITIES = new Set([
     "Swimming Pool",
 ]);
 function normalizeEventTimestamp(ts) {
-    const timestamp = ts ?? admin.firestore.Timestamp.now();
+    const timestamp = ts ?? firestore_1.Timestamp.now();
     const date = timestamp.toDate();
     const eventDate = date.toISOString().slice(0, 10); // YYYY-MM-DD
     return { timestamp, eventDate };
@@ -100,7 +101,7 @@ async function handleListingView(event, timestamp, eventDate) {
                 listingId,
                 lastViewedAt: timestamp,
                 lastViewedDate: eventDate,
-                uniqueSessionViews: admin.firestore.FieldValue.increment(1),
+                uniqueSessionViews: firestore_1.FieldValue.increment(1),
             }, { merge: true });
         }
         // Daily aggregation: dedupe by (listingId, date, sessionId)
@@ -115,8 +116,8 @@ async function handleListingView(event, timestamp, eventDate) {
                 landlordId: landlordId ?? null,
                 date: eventDate,
                 lastViewedAt: timestamp,
-                views: admin.firestore.FieldValue.increment(1),
-                uniqueSessions: admin.firestore.FieldValue.increment(1),
+                views: firestore_1.FieldValue.increment(1),
+                uniqueSessions: firestore_1.FieldValue.increment(1),
             }, { merge: true });
         }
         else {
@@ -158,14 +159,14 @@ async function handleListingSave(event, timestamp, eventDate) {
             listingId,
             lastSavedAt: timestamp,
             lastSavedDate: eventDate,
-            totalSaves: admin.firestore.FieldValue.increment(1),
+            totalSaves: firestore_1.FieldValue.increment(1),
         }, { merge: true });
         tx.set(dailyRef, {
             listingId,
             landlordId: landlordId ?? null,
             date: eventDate,
             lastSavedAt: timestamp,
-            saves: admin.firestore.FieldValue.increment(1),
+            saves: firestore_1.FieldValue.increment(1),
         }, { merge: true });
     });
 }
@@ -197,14 +198,14 @@ async function handleMessageSent(event, timestamp, eventDate) {
             listingId,
             lastMessageAt: timestamp,
             lastMessageDate: eventDate,
-            firstMessageCount: admin.firestore.FieldValue.increment(1),
+            firstMessageCount: firestore_1.FieldValue.increment(1),
         }, { merge: true });
         tx.set(dailyRef, {
             listingId,
             landlordId: landlordId ?? null,
             date: eventDate,
             lastMessageAt: timestamp,
-            messages: admin.firestore.FieldValue.increment(1),
+            messages: firestore_1.FieldValue.increment(1),
         }, { merge: true });
     });
 }
@@ -230,7 +231,7 @@ async function handleSearchFilters(event, timestamp, eventDate) {
     const increments = {};
     safeFilterKeys.forEach((key) => {
         const fieldName = `filterUsage.${key}`;
-        increments[fieldName] = admin.firestore.FieldValue.increment(1);
+        increments[fieldName] = firestore_1.FieldValue.increment(1);
     });
     await filtersRef.set({
         lastUpdatedAt: timestamp,

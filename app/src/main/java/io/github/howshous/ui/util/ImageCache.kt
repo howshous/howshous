@@ -12,7 +12,7 @@ fun saveBitmapToCache(context: Context, bitmap: Bitmap): Uri {
     val file = File(context.cacheDir, filename)
 
     FileOutputStream(file).use { out ->
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
     }
 
     return FileProvider.getUriForFile(

@@ -26,6 +26,9 @@ val LandlordBlue = Color(0xFF1E3A8A)
 val LandlordBlueAlt = Color(0xFF4C7AFF)
 val LandlordBlueDark = Color(0xFF172D66)
 
+// Administrator palette
+val AdminPower = Color(0xFF211F21)
+
 val VacancyBlue = Color(0xFF3B82F6)
 val VacancyText = Color(0xFF3267BF)
 val DueYellow = Color(0xFFFEF9C3)

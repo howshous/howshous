@@ -10,9 +10,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import io.github.howshous.R
+import io.github.howshous.ui.theme.AdminPower
 import io.github.howshous.ui.theme.LandlordBlue
-import io.github.howshous.ui.theme.MutedGray
 import io.github.howshous.ui.theme.TenantGreen
 
 data class BottomNavItem(
@@ -32,6 +31,7 @@ fun BottomNavBar(
     val backgroundColor = when (role) {
         "tenant" -> TenantGreen
         "landlord" -> LandlordBlue
+        "administrator" -> AdminPower
         else -> TenantGreen
     }
 

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.firebase.firestore.FieldValue
 import io.github.howshous.data.firestore.ListingRepository
 import io.github.howshous.data.models.Listing
 import io.github.howshous.ui.components.DebouncedIconButton
@@ -94,6 +95,7 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
     var isCropping by remember { mutableStateOf(false) }
     var landDeedUri by remember { mutableStateOf<Uri?>(null) }
     var existingLandDeedUrl by remember { mutableStateOf("") }
+    var currentReviewStatus by remember { mutableStateOf("") }
 
     val baguioLocations = listOf(
         "Baguio City Center",
@@ -138,6 +140,7 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
         if (listingId.isBlank()) return@LaunchedEffect
         val listing = listingRepository.getListing(listingId)
         if (listing != null) {
+            currentReviewStatus = listing.reviewStatus
             title = listing.title
             description = listing.description
             location = listing.location
@@ -557,7 +560,11 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
                                         "deposit" to depositValue,
                                         "capacity" to capacityValue,
                                         "amenities" to selectedAmenities.toList(),
-                                        "status" to "active"
+                                        "status" to "active",
+                                        "reviewStatus" to "under_review",
+                                        "reviewedBy" to "",
+                                        "reviewNotes" to "",
+                                        "reviewedAt" to FieldValue.delete()
                                     )
                                     if (template != null) {
                                         updates["contractTemplate"] = template
@@ -602,6 +609,9 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
 
                                     listingRepository.updateListing(listingId, updates)
                                     isSubmitting = false
+                                    if (currentReviewStatus == "rejected") {
+                                        snackbarHostState.showSnackbar("Listing resubmitted for admin review.")
+                                    }
                                     nav.popBackStack()
                                 }
                             }

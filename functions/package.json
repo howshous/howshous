@@ -4,7 +4,8 @@
     "build": "tsc",
     "lint": "eslint --ext .ts src",
     "serve": "firebase emulators:start --only functions",
-    "deploy": "firebase deploy --only functions"
+    "deploy": "firebase deploy --only functions",
+    "promote-admin": "node scripts/promote-admin.js"
   },
   "main": "lib/index.js",
   "engines": {
@@ -22,4 +23,3 @@
   },
   "private": true
 }
-

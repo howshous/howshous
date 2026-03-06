@@ -25,6 +25,9 @@ class AuthRepository(private val context: Context) {
 
     suspend fun signUpWithEmail(user: SimpleUser, password: String): Result<String> {
         return try {
+            if (user.role == "administrator" || user.role == "admin") {
+                return Result.failure(IllegalArgumentException("Administrator accounts cannot be created in-app."))
+            }
             val res = auth.createUserWithEmailAndPassword(user.email!!, password).await()
             val uid = res.user!!.uid
             val displayName = "${user.firstName} ${user.lastName}".trim()
@@ -62,6 +65,11 @@ class AuthRepository(private val context: Context) {
             // load user role from Firestore
             val doc = db.collection("users").document(uid).get().await()
             val role = doc.getString("role") ?: ""
+            val isBanned = doc.getBoolean("isBanned") ?: false
+            if (isBanned) {
+                auth.signOut()
+                return Result.failure(IllegalStateException("This account has been banned."))
+            }
             saveRole(context, role)
             saveUid(context, uid)
             Result.success(uid)

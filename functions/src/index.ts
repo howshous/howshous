@@ -1,11 +1,12 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import {FieldPath, FieldValue, Timestamp, getFirestore} from "firebase-admin/firestore";
 
 if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 export const ANALYTICS_EVENT_TYPES = {
   LISTING_VIEW: "LISTING_VIEW",
@@ -29,7 +30,7 @@ interface AnalyticsEvent {
   maxPrice?: number;
   amenities?: string[];
   price?: number;
-  timestamp?: admin.firestore.Timestamp;
+  timestamp?: Timestamp;
 }
 
 const ALLOWED_AMENITIES = new Set<string>([
@@ -48,9 +49,9 @@ const ALLOWED_AMENITIES = new Set<string>([
 ]);
 
 function normalizeEventTimestamp(
-  ts: admin.firestore.Timestamp | undefined,
-): {timestamp: admin.firestore.Timestamp; eventDate: string} {
-  const timestamp = ts ?? admin.firestore.Timestamp.now();
+  ts: Timestamp | undefined,
+): {timestamp: Timestamp; eventDate: string} {
+  const timestamp = ts ?? Timestamp.now();
   const date = timestamp.toDate();
   const eventDate = date.toISOString().slice(0, 10); // YYYY-MM-DD
   return {timestamp, eventDate};
@@ -114,7 +115,7 @@ function isWithinLastNDays(dateStr: string, days: number, now: Date = new Date()
 
 async function handleListingView(
   event: AnalyticsEvent,
-  timestamp: admin.firestore.Timestamp,
+  timestamp: Timestamp,
   eventDate: string,
 ) {
   const {listingId, landlordId, sessionId} = event;
@@ -159,7 +160,7 @@ async function handleListingView(
           listingId,
           lastViewedAt: timestamp,
           lastViewedDate: eventDate,
-          uniqueSessionViews: admin.firestore.FieldValue.increment(1),
+          uniqueSessionViews: FieldValue.increment(1),
         },
         {merge: true},
       );
@@ -184,8 +185,8 @@ async function handleListingView(
           landlordId: landlordId ?? null,
           date: eventDate,
           lastViewedAt: timestamp,
-          views: admin.firestore.FieldValue.increment(1),
-          uniqueSessions: admin.firestore.FieldValue.increment(1),
+          views: FieldValue.increment(1),
+          uniqueSessions: FieldValue.increment(1),
         },
         {merge: true},
       );
@@ -207,7 +208,7 @@ async function handleListingView(
 
 async function handleListingSave(
   event: AnalyticsEvent,
-  timestamp: admin.firestore.Timestamp,
+  timestamp: Timestamp,
   eventDate: string,
 ) {
   const {listingId, landlordId, userId} = event;
@@ -247,7 +248,7 @@ async function handleListingSave(
         listingId,
         lastSavedAt: timestamp,
         lastSavedDate: eventDate,
-        totalSaves: admin.firestore.FieldValue.increment(1),
+        totalSaves: FieldValue.increment(1),
       },
       {merge: true},
     );
@@ -259,7 +260,7 @@ async function handleListingSave(
         landlordId: landlordId ?? null,
         date: eventDate,
         lastSavedAt: timestamp,
-        saves: admin.firestore.FieldValue.increment(1),
+        saves: FieldValue.increment(1),
       },
       {merge: true},
     );
@@ -268,7 +269,7 @@ async function handleListingSave(
 
 async function handleMessageSent(
   event: AnalyticsEvent,
-  timestamp: admin.firestore.Timestamp,
+  timestamp: Timestamp,
   eventDate: string,
 ) {
   const {listingId, landlordId, chatId} = event;
@@ -308,7 +309,7 @@ async function handleMessageSent(
         listingId,
         lastMessageAt: timestamp,
         lastMessageDate: eventDate,
-        firstMessageCount: admin.firestore.FieldValue.increment(1),
+        firstMessageCount: FieldValue.increment(1),
       },
       {merge: true},
     );
@@ -320,7 +321,7 @@ async function handleMessageSent(
         landlordId: landlordId ?? null,
         date: eventDate,
         lastMessageAt: timestamp,
-        messages: admin.firestore.FieldValue.increment(1),
+        messages: FieldValue.increment(1),
       },
       {merge: true},
     );
@@ -353,10 +354,10 @@ async function handleSearchFilters(
 
   const filtersRef = db.collection("search_metrics").doc(eventDate);
 
-  const increments: Record<string, admin.firestore.FieldValue> = {};
+  const increments: Record<string, FieldValue> = {};
   safeFilterKeys.forEach((key) => {
     const fieldName = `filterUsage.${key}`;
-    increments[fieldName] = admin.firestore.FieldValue.increment(1);
+    increments[fieldName] = FieldValue.increment(1);
   });
 
   await filtersRef.set(
@@ -550,8 +551,8 @@ export const getListingAnalyticsSummary = functions.https.onCall(async (data, co
   const todayKey = dateKeyDaysAgo(0, now);
   const searchDocsSnap = await db
     .collection("search_metrics")
-    .where(admin.firestore.FieldPath.documentId(), ">=", thirtyDaysAgoKey)
-    .where(admin.firestore.FieldPath.documentId(), "<=", todayKey)
+    .where(FieldPath.documentId(), ">=", thirtyDaysAgoKey)
+    .where(FieldPath.documentId(), "<=", todayKey)
     .get();
 
   const filterUsageAggregate: Record<string, number> = {};

@@ -66,8 +66,16 @@ fun Splash(nav: NavController) {
             }
 
             val role = doc.getString("role") ?: ""
+            val isBanned = doc.getBoolean("isBanned") ?: false
             if (role.isBlank()) {
                 clearSession(context)
+                nav.navigate("login_choice") {
+                    popUpTo("splash") { inclusive = true }
+                }
+                return@LaunchedEffect
+            }
+            if (isBanned) {
+                AuthRepository(context).logout()
                 nav.navigate("login_choice") {
                     popUpTo("splash") { inclusive = true }
                 }
