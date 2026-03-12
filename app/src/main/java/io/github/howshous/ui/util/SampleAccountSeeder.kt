@@ -37,22 +37,32 @@ object SampleAccountSeeder {
     suspend fun generateIfMissing(context: Context): SeedResult {
         val auth = FirebaseAuth.getInstance()
 
-        val tenantExists = hasAccountForEmail(auth, TENANT_EMAIL)
-        val landlordExists = hasAccountForEmail(auth, LANDLORD_EMAIL)
-        val adminExists = hasAccountForEmail(auth, ADMIN_EMAIL)
-        if (tenantExists || landlordExists || adminExists) {
-            return SeedResult(false, "Sample accounts already exist.")
-        }
-
         return try {
-            createTenantAccount(context)
+            val tenantUid = ensureAccount(
+                auth = auth,
+                email = TENANT_EMAIL,
+                password = TENANT_PASSWORD
+            ) { createTenantAccount(context) }
             auth.signOut()
 
-            val landlordUid = createLandlordAccount(context)
+            val landlordUid = ensureAccount(
+                auth = auth,
+                email = LANDLORD_EMAIL,
+                password = LANDLORD_PASSWORD
+            ) { createLandlordAccount(context) }
             auth.signOut()
-            createAdminAccount(context)
+
+            // Listing writes are expected to be authored by the landlord account.
+            auth.signInWithEmailAndPassword(LANDLORD_EMAIL, LANDLORD_PASSWORD).await()
 
             val createdIds = SampleListingsGenerator.generateSampleListings(landlordUid)
+            auth.signOut()
+
+            val adminUid = ensureAccount(
+                auth = auth,
+                email = ADMIN_EMAIL,
+                password = ADMIN_PASSWORD
+            ) { createAdminAccount(context) }
             val listingRepo = ListingRepository()
             val listings = listingRepo.getListingsForLandlord(landlordUid)
             if (listings.isNotEmpty()) {
@@ -67,7 +77,7 @@ object SampleAccountSeeder {
 
             SeedResult(
                 true,
-                "Created sample tenant + landlord + admin. Listings: ${createdIds.size}."
+                "Sample accounts ready (tenant=$tenantUid, landlord=$landlordUid, admin=$adminUid). Recreated listings: ${createdIds.size}."
             )
         } catch (e: Exception) {
             auth.signOut()
@@ -82,6 +92,42 @@ object SampleAccountSeeder {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private suspend fun ensureAccount(
+        auth: FirebaseAuth,
+        email: String,
+        password: String,
+        createNew: suspend () -> String
+    ): String {
+        return if (hasAccountForEmail(auth, email)) {
+            resolveExistingUid(auth, email, password)
+        } else {
+            createNew()
+        }
+    }
+
+    private suspend fun resolveExistingUid(
+        auth: FirebaseAuth,
+        email: String,
+        password: String
+    ): String {
+        val byDoc = findUserUidByEmail(email)
+        if (!byDoc.isNullOrBlank()) return byDoc
+
+        val signIn = auth.signInWithEmailAndPassword(email, password).await()
+        return signIn.user?.uid
+            ?: throw IllegalStateException("Unable to resolve UID for existing account: $email")
+    }
+
+    private suspend fun findUserUidByEmail(email: String): String? {
+        val db = FirebaseFirestore.getInstance()
+        val snap = db.collection("users")
+            .whereEqualTo("email", email)
+            .limit(1)
+            .get()
+            .await()
+        return snap.documents.firstOrNull()?.id
     }
 
     private suspend fun createTenantAccount(context: Context): String {

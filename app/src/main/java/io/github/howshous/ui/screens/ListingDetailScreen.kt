@@ -63,7 +63,8 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
     var showPhotoViewer by remember { mutableStateOf(false) }
     var selectedPhotoUrl by remember { mutableStateOf("") }
     var rejectionReasons by remember { mutableStateOf(setOf<String>()) }
-    var adminActionError by remember { mutableStateOf("") }
+    var showRejectDialog by remember { mutableStateOf(false) }
+    var rejectDialogError by remember { mutableStateOf("") }
     val adminRejectReasonOptions = remember {
         listOf(
             "Contract terms are missing or invalid",
@@ -318,11 +319,9 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
                     }
                 }
 
-                // Admin review (contract + rejection reasons)
+                // Admin review (contract)
                 item {
                     if (role == "administrator") {
-                        val reviewStatus = listing!!.reviewStatus.ifBlank { "approved" }
-                        val isReviewDecisionState = reviewStatus == "under_review" || reviewStatus == "rejected"
                         val template = listing!!.contractTemplate
                         val templateTitle = template?.get("title") as? String ?: "Not provided"
                         val templateTerms = template?.get("terms") as? String ?: "Not provided"
@@ -340,36 +339,6 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
                             "Template Rent: ${templateRent?.let { "PHP $it" } ?: "Not provided"} | Template Deposit: ${templateDeposit?.let { "PHP $it" } ?: "Not provided"}",
                             style = MaterialTheme.typography.bodySmall
                         )
-
-                        if (isReviewDecisionState) {
-                            Spacer(Modifier.height(12.dp))
-                            Text("Rejection reasons (required to reject)", style = MaterialTheme.typography.titleSmall)
-                            Spacer(Modifier.height(6.dp))
-                            adminRejectReasonOptions.forEach { reason ->
-                                val checked = rejectionReasons.contains(reason)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            rejectionReasons = if (checked) rejectionReasons - reason else rejectionReasons + reason
-                                        }
-                                        .padding(vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Checkbox(
-                                        checked = checked,
-                                        onCheckedChange = { toggled ->
-                                            rejectionReasons = if (toggled) rejectionReasons + reason else rejectionReasons - reason
-                                        }
-                                    )
-                                    Text(reason, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
-                        }
-                        if (adminActionError.isNotBlank()) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(adminActionError, color = Color(0xFFB00020), style = MaterialTheme.typography.bodySmall)
-                        }
                         Spacer(Modifier.height(12.dp))
                     }
                 }
@@ -394,7 +363,6 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
                                 Button(
                                     onClick = {
                                         scope.launch {
-                                            adminActionError = ""
                                             listingRepository.takeDownListing(
                                                 listingId = listingId,
                                                 adminUid = uid,
@@ -427,7 +395,6 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
                                     Button(
                                         onClick = {
                                             scope.launch {
-                                                adminActionError = ""
                                                 listingRepository.approveListing(
                                                     listingId = listingId,
                                                     adminUid = uid,
@@ -445,30 +412,8 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
 
                                     Button(
                                         onClick = {
-                                            if (rejectionReasons.isEmpty()) {
-                                                adminActionError = "Select at least one rejection reason before rejecting."
-                                                return@Button
-                                            }
-                                            scope.launch {
-                                                val reasonsText = rejectionReasons.joinToString("; ")
-                                                adminActionError = ""
-                                                listingRepository.rejectListing(
-                                                    listingId = listingId,
-                                                    adminUid = uid,
-                                                    notes = reasonsText
-                                                )
-                                                notificationRepository.createNotification(
-                                                    userId = listing!!.landlordId,
-                                                    type = "listing_rejected",
-                                                    title = "Listing Rejected",
-                                                    message = "Your listing \"${listing!!.title}\" was rejected. Reasons: $reasonsText. Please update and resubmit for review.",
-                                                    actionUrl = "edit_listing/${listingId}",
-                                                    listingId = listingId,
-                                                    senderId = uid
-                                                )
-                                                viewModel.loadListing(listingId)
-                                                nav.popBackStack()
-                                            }
+                                            rejectDialogError = ""
+                                            showRejectDialog = true
                                         },
                                         modifier = Modifier.weight(1f),
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB00020))
@@ -492,6 +437,92 @@ fun ListingDetailScreen(nav: NavController, listingId: String = "") {
                             .padding(32.dp)
                     )
         }
+    }
+
+    if (showRejectDialog && role == "administrator" && listing != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showRejectDialog = false
+                rejectDialogError = ""
+            },
+            title = { Text("Reject Listing") },
+            text = {
+                Column {
+                    Text(
+                        "Select at least one reason before confirming rejection.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    adminRejectReasonOptions.forEach { reason ->
+                        val checked = rejectionReasons.contains(reason)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    rejectionReasons = if (checked) rejectionReasons - reason else rejectionReasons + reason
+                                }
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { toggled ->
+                                    rejectionReasons = if (toggled) rejectionReasons + reason else rejectionReasons - reason
+                                }
+                            )
+                            Text(reason, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (rejectDialogError.isNotBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(rejectDialogError, color = Color(0xFFB00020), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (rejectionReasons.isEmpty()) {
+                            rejectDialogError = "Select at least one rejection reason before rejecting."
+                            return@TextButton
+                        }
+                        scope.launch {
+                            val reasonsText = rejectionReasons.joinToString("; ")
+                            listingRepository.rejectListing(
+                                listingId = listingId,
+                                adminUid = uid,
+                                notes = reasonsText
+                            )
+                            notificationRepository.createNotification(
+                                userId = listing!!.landlordId,
+                                type = "listing_rejected",
+                                title = "Listing Rejected",
+                                message = "Your listing \"${listing!!.title}\" was rejected. Reasons: $reasonsText. Please update and resubmit for review.",
+                                actionUrl = "edit_listing/${listingId}",
+                                listingId = listingId,
+                                senderId = uid
+                            )
+                            showRejectDialog = false
+                            rejectDialogError = ""
+                            viewModel.loadListing(listingId)
+                            nav.popBackStack()
+                        }
+                    }
+                ) {
+                    Text("Confirm Reject", color = Color(0xFFB00020))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showRejectDialog = false
+                        rejectDialogError = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showPhotoViewer && selectedPhotoUrl.isNotBlank()) {

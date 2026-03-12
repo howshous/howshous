@@ -126,42 +126,37 @@ object SampleListingsGenerator {
         if (landlordId.isBlank()) return emptyList()
         val db = FirebaseFirestore.getInstance()
         val createdIds = mutableListOf<String>()
-        
-        return try {
-            // First, delete existing sample listings for this landlord
-            deleteExistingSampleListings(landlordId)
-            
-            // Then create new sample listings
-            sampleListings.forEach { template ->
-                val docRef = db.collection("listings").document()
-                val now = Timestamp.now()
-                val listingMap = hashMapOf<String, Any>(
-                    "landlordId" to landlordId,
-                    "title" to template.title,
-                    "description" to template.description,
-                    "location" to template.location,
-                    "price" to template.price,
-                    "deposit" to template.deposit,
-                    "capacity" to template.capacity,
-                    "status" to template.status,
-                    "reviewStatus" to "under_review",
-                    "reviewedBy" to "",
-                    "reviewNotes" to "",
-                    "amenities" to template.amenities,
-                    "photos" to template.photos,
-                    "createdAt" to now,
-                    "updatedAt" to now,
-                    "uniqueViewCount" to 0,
-                    "isSample" to true
-                )
-                docRef.set(listingMap).await()
-                createdIds.add(docRef.id)
-            }
-            createdIds
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+
+        // First, delete existing sample listings for this landlord
+        deleteExistingSampleListings(landlordId)
+
+        // Then create new sample listings
+        sampleListings.forEach { template ->
+            val docRef = db.collection("listings").document()
+            val now = Timestamp.now()
+            val listingMap = hashMapOf<String, Any>(
+                "landlordId" to landlordId,
+                "title" to template.title,
+                "description" to template.description,
+                "location" to template.location,
+                "price" to template.price,
+                "deposit" to template.deposit,
+                "capacity" to template.capacity,
+                "status" to template.status,
+                "reviewStatus" to "under_review",
+                "reviewedBy" to "",
+                "reviewNotes" to "",
+                "amenities" to template.amenities,
+                "photos" to template.photos,
+                "createdAt" to now,
+                "updatedAt" to now,
+                "uniqueViewCount" to 0,
+                "isSample" to true
+            )
+            docRef.set(listingMap).await()
+            createdIds.add(docRef.id)
         }
+        return createdIds
     }
     
     private suspend fun deleteExistingSampleListings(landlordId: String) {
