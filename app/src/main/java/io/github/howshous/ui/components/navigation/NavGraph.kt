@@ -35,6 +35,7 @@ import io.github.howshous.ui.screens.main_tenant.TenantAIHelperScreen
 import io.github.howshous.ui.screens.main_tenant.ViewContractsScreen
 import io.github.howshous.ui.screens.main_tenant.EmergencyScreen
 import io.github.howshous.ui.screens.main_tenant.ReportIssueScreen
+import io.github.howshous.ui.screens.main_landlord.LandlordAnalyticsAIChatScreen
 import io.github.howshous.ui.screens.main_landlord.LandlordListingDetail
 import io.github.howshous.ui.viewmodels.SignupViewModel
 
@@ -134,6 +135,10 @@ fun HowsHousApp(nav: NavHostController = rememberNavController()) {
         composable("landlord_listing/{listingId}") { backStackEntry ->
             val listingId = backStackEntry.arguments?.getString("listingId") ?: ""
             LandlordListingDetail(nav, listingId)
+        }
+
+        composable("landlord_analytics_chat") {
+            LandlordAnalyticsAIChatScreen(nav)
         }
     }
 }
