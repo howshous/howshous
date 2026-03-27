@@ -1,4 +1,4 @@
-﻿package io.github.howshous.ui.screens.main_landlord
+package io.github.howshous.ui.screens.main_landlord
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,7 +38,9 @@ import io.github.howshous.ui.viewmodels.ChatViewModel
 import io.github.howshous.ui.viewmodels.NotificationViewModel
 import io.github.howshous.ui.viewmodels.AccountViewModel
 import io.github.howshous.ui.components.ListingCard
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun LandlordHome(nav: NavController) {
@@ -182,12 +184,14 @@ fun LandlordListings(nav: NavController) {
     var metricsRefreshTrigger by remember { mutableStateOf(0) }
     var selectedTab by remember { mutableStateOf(0) } // 0 = Listings, 1 = Performance
 
-    LaunchedEffect(listings, metricsRefreshTrigger) {
-        if (listings.isNotEmpty()) {
+    LaunchedEffect(selectedTab, listings, metricsRefreshTrigger) {
+        if (selectedTab == 1 && listings.isNotEmpty()) {
             metricsLoading = true
-            metricsMap = metricsRepo.getMetricsForListings(listings.map { it.id })
+            metricsMap = withContext(Dispatchers.IO) {
+                metricsRepo.getMetricsForListings(listings.map { it.id })
+            }
             metricsLoading = false
-        } else {
+        } else if (listings.isEmpty()) {
             metricsMap = emptyMap()
         }
     }
@@ -316,6 +320,15 @@ fun LandlordListings(nav: NavController) {
                                 )
                             }
 
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                onClick = { nav.navigate("landlord_analytics_chat") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = VacancyBlue,
+                                    contentColor = Color.White
+                                )
+                            ) { Text("Open AI Insights Chat") }
                             Spacer(Modifier.height(8.dp))
 
                             if (listings.isEmpty()) {

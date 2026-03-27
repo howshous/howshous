@@ -14,6 +14,9 @@
 .cxx
 local.properties
 *.md
+!docs/
+!docs/*.md
+!docs/**/*.md
 firestore-debug.log
 # debug logs
 firestore-debug.log

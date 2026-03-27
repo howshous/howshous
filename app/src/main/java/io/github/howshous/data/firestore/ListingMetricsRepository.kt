@@ -1,12 +1,12 @@
 package io.github.howshous.data.firestore
 
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 
-/**
- * Per-listing aggregated metrics (7d and 30d) read from listing_daily_stats.
- * Landlords can read only their own listing stats via Firestore rules.
- */
 data class ListingMetrics(
     val listingId: String,
     val views7d: Int,
@@ -103,10 +103,13 @@ class ListingMetricsRepository {
 
     suspend fun getMetricsForListings(listingIds: List<String>): Map<String, ListingMetrics> {
         if (listingIds.isEmpty()) return emptyMap()
-        val result = mutableMapOf<String, ListingMetrics>()
-        for (id in listingIds) {
-            getMetricsForListing(id)?.let { result[id] = it }
+        return coroutineScope {
+            val jobs = listingIds.map { id ->
+                async(Dispatchers.IO) { id to getMetricsForListing(id) }
+            }
+            jobs.awaitAll()
+                .mapNotNull { (id, metrics) -> metrics?.let { id to it } }
+                .toMap()
         }
-        return result
     }
 }
