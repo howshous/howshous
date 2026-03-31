@@ -8,7 +8,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.admin == true
+        (request.auth.token.keys().hasAll(['admin']) && request.auth.token.admin == true)
         || (
           exists(/databases/$(database)/documents/users/$(request.auth.uid))
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "administrator"
@@ -28,7 +28,8 @@ service cloud.firestore {
     }
 
     function isSampleAdminBootstrap() {
-      return request.resource.data.role == "administrator"
+      return request.resource.data.keys().hasAll(["role", "email", "firstName", "lastName"])
+        && request.resource.data.role == "administrator"
         && request.resource.data.email == "aa@hh.com"
         && request.resource.data.firstName == "Annie"
         && request.resource.data.lastName == "Admin";
@@ -135,7 +136,7 @@ service cloud.firestore {
         && !isBanned()
         && request.auth.uid == userId
         && (
-          request.resource.data.role in ["tenant", "landlord"]
+          (request.resource.data.keys().hasAny(["role"]) && request.resource.data.role in ["tenant", "landlord"])
           || isSampleAdminBootstrap()
         );
       allow update: if isAdmin() || (

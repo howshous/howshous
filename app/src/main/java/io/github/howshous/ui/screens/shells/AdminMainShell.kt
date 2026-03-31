@@ -71,7 +71,7 @@ fun AdminMainShell(rootNav: NavHostController) {
                 }
                 composable("admin_users") {
                     selectedRoute = "admin_users"
-                    AdminUsers()
+                    AdminUsers(innerNav)
                 }
                 composable("admin_account") {
                     selectedRoute = "admin_account"
@@ -79,7 +79,7 @@ fun AdminMainShell(rootNav: NavHostController) {
                 }
                 composable("admin_appeals") {
                     selectedRoute = "admin_appeals"
-                    AdminAppeals()
+                    AdminAppeals(innerNav)
                 }
             }
         }

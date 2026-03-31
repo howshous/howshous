@@ -4,8 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.DrawableRes
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.userProfileChangeRequest
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import io.github.howshous.R
 import io.github.howshous.data.firestore.AnalyticsRepository
@@ -49,86 +47,87 @@ object SampleAccountSeeder {
 
         return try {
             val tenantUid = ensureAccount(
-                auth = auth,
-                email = TENANT_EMAIL,
-                password = TENANT_PASSWORD
+                auth,
+                TENANT_EMAIL,
+                TENANT_PASSWORD
             ) { createTenantAccount(context, TENANT_FIRST, TENANT_LAST, TENANT_EMAIL, TENANT_PASSWORD) }
             auth.signOut()
 
             val tenant2Uid = ensureAccount(
-                auth = auth,
-                email = TENANT2_EMAIL,
-                password = TENANT2_PASSWORD
+                auth,
+                TENANT2_EMAIL,
+                TENANT2_PASSWORD
             ) { createTenantAccount(context, TENANT2_FIRST, TENANT2_LAST, TENANT2_EMAIL, TENANT2_PASSWORD) }
             auth.signOut()
 
             val landlordUid = ensureAccount(
-                auth = auth,
-                email = LANDLORD_EMAIL,
-                password = LANDLORD_PASSWORD
+                auth,
+                LANDLORD_EMAIL,
+                LANDLORD_PASSWORD
             ) { createLandlordAccount(context, LANDLORD_FIRST, LANDLORD_LAST, LANDLORD_EMAIL, LANDLORD_PASSWORD) }
             auth.signOut()
 
             val landlord2Uid = ensureAccount(
-                auth = auth,
-                email = LANDLORD2_EMAIL,
-                password = LANDLORD2_PASSWORD
+                auth,
+                LANDLORD2_EMAIL,
+                LANDLORD2_PASSWORD
             ) { createLandlordAccount(context, LANDLORD2_FIRST, LANDLORD2_LAST, LANDLORD2_EMAIL, LANDLORD2_PASSWORD) }
             auth.signOut()
 
-            // Listing writes are expected to be authored by the landlord account.
             auth.signInWithEmailAndPassword(LANDLORD_EMAIL, LANDLORD_PASSWORD).await()
-            val lemmListingIds = SampleListingsGenerator.generateSampleListings(landlordUid)
+            SampleListingsGenerator.generateSampleListings(landlordUid, context)
             auth.signOut()
 
             auth.signInWithEmailAndPassword(LANDLORD2_EMAIL, LANDLORD2_PASSWORD).await()
-            val larryListingIds = SampleListingsGenerator.generateSampleListings(
+            SampleListingsGenerator.generateSampleListings(
                 landlord2Uid,
-                titlePrefix = "Larry's"
+                context,
+                "Larry's"
             )
             auth.signOut()
 
-            val adminUid = ensureAccount(
-                auth = auth,
-                email = ADMIN_EMAIL,
-                password = ADMIN_PASSWORD
+            ensureAccount(
+                auth,
+                ADMIN_EMAIL,
+                ADMIN_PASSWORD
             ) { createAdminAccount(context) }
+
             val listingRepo = ListingRepository()
             val analyticsRepo = AnalyticsRepository()
+
             val lemmListings = listingRepo.getListingsForLandlord(landlordUid)
             if (lemmListings.isNotEmpty()) {
                 analyticsRepo.seedTestEventsForLandlord(
-                    landlordId = landlordUid,
-                    listings = lemmListings.map { it.id to it.price }
+                    landlordUid,
+                    lemmListings.map { it.id to it.price }
                 )
             }
+
             val larryListings = listingRepo.getListingsForLandlord(landlord2Uid)
             if (larryListings.isNotEmpty()) {
                 analyticsRepo.seedTestEventsForLandlord(
-                    landlordId = landlord2Uid,
-                    listings = larryListings.map { it.id to it.price }
+                    landlord2Uid,
+                    larryListings.map { it.id to it.price }
                 )
             }
 
             auth.signOut()
 
-            SeedResult(
-                true,
-                "Sample accounts ready (tenant1=$tenantUid, tenant2=$tenant2Uid, landlord1=$landlordUid, landlord2=$landlord2Uid, admin=$adminUid). Recreated listings: lemm=${lemmListingIds.size}, larry=${larryListingIds.size}."
-            )
+            SeedResult(true, "done")
         } catch (e: Exception) {
             auth.signOut()
-            SeedResult(false, "Failed to generate sample data: ${e.message}")
+            SeedResult(false, e.message ?: "error")
         }
     }
 
-    private suspend fun hasAccountForEmail(auth: FirebaseAuth, email: String): Boolean {
-        return try {
-            val methods = auth.fetchSignInMethodsForEmail(email).await().signInMethods
-            !methods.isNullOrEmpty()
-        } catch (_: Exception) {
-            false
-        }
+    private fun getProfileResId(context: Context, firstName: String): Int {
+        val resName = "test_pfp_${firstName.lowercase()}"
+        val resId = context.resources.getIdentifier(
+            resName,
+            "drawable",
+            context.packageName
+        )
+        return if (resId != 0) resId else R.drawable.test_pfp
     }
 
     private suspend fun ensureAccount(
@@ -139,8 +138,15 @@ object SampleAccountSeeder {
     ): String {
         return if (hasAccountForEmail(auth, email)) {
             resolveExistingUid(auth, email, password)
-        } else {
-            createNew()
+        } else createNew()
+    }
+
+    private suspend fun hasAccountForEmail(auth: FirebaseAuth, email: String): Boolean {
+        return try {
+            val res = auth.fetchSignInMethodsForEmail(email).await()
+            !res.signInMethods.isNullOrEmpty()
+        } catch (_: Exception) {
+            false
         }
     }
 
@@ -149,22 +155,8 @@ object SampleAccountSeeder {
         email: String,
         password: String
     ): String {
-        val byDoc = findUserUidByEmail(email)
-        if (!byDoc.isNullOrBlank()) return byDoc
-
         val signIn = auth.signInWithEmailAndPassword(email, password).await()
-        return signIn.user?.uid
-            ?: throw IllegalStateException("Unable to resolve UID for existing account: $email")
-    }
-
-    private suspend fun findUserUidByEmail(email: String): String? {
-        val db = FirebaseFirestore.getInstance()
-        val snap = db.collection("users")
-            .whereEqualTo("email", email)
-            .limit(1)
-            .get()
-            .await()
-        return snap.documents.firstOrNull()?.id
+        return signIn.user!!.uid
     }
 
     private suspend fun createTenantAccount(
@@ -179,42 +171,20 @@ object SampleAccountSeeder {
 
         val res = auth.createUserWithEmailAndPassword(email, password).await()
         val uid = res.user!!.uid
-        val displayName = "$firstName $lastName"
-        res.user?.updateProfile(userProfileChangeRequest { this.displayName = displayName })?.await()
 
-        val selfieUri = resUri(context, R.drawable.test_pfp)
-        val idUri = resUri(context, R.drawable.test_id_card)
-
+        val selfieUri = resUri(context, getProfileResId(context, firstName))
         val profileUrl = uploadCompressedImage(context, selfieUri, "users/$uid/profile.jpg")
-        val selfieVerificationUrl = uploadCompressedImage(context, selfieUri, "verifications/$uid/selfie.jpg")
-        val idVerificationUrl = uploadCompressedImage(context, idUri, "verifications/$uid/id.jpg")
 
-        val userDoc = hashMapOf(
-            "uid" to uid,
-            "firstName" to firstName,
-            "lastName" to lastName,
-            "email" to email,
-            "role" to "tenant",
-            "verified" to false,
-            "isBanned" to false,
-            "bannedAt" to null,
-            "bannedBy" to "",
-            "banReason" to "",
-            "profileImageUrl" to profileUrl,
-            "businessPermitUrl" to ""
-        )
-
-        db.collection("users").document(uid).set(userDoc).await()
-
-        val verificationDoc = hashMapOf(
-            "selfieUrl" to selfieVerificationUrl,
-            "idUrl" to idVerificationUrl,
-            "propertyUrl" to "",
-            "status" to "pending",
-            "submittedAt" to FieldValue.serverTimestamp()
-        )
-
-        db.collection("verifications").document(uid).set(verificationDoc).await()
+        db.collection("users").document(uid).set(
+            mapOf(
+                "uid" to uid,
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "email" to email,
+                "role" to "tenant",
+                "profileImageUrl" to profileUrl
+            )
+        ).await()
 
         return uid
     }
@@ -231,44 +201,24 @@ object SampleAccountSeeder {
 
         val res = auth.createUserWithEmailAndPassword(email, password).await()
         val uid = res.user!!.uid
-        val displayName = "$firstName $lastName"
-        res.user?.updateProfile(userProfileChangeRequest { this.displayName = displayName })?.await()
 
-        val selfieUri = resUri(context, R.drawable.test_pfp)
-        val idUri = resUri(context, R.drawable.test_id_card)
+        val selfieUri = resUri(context, getProfileResId(context, firstName))
         val permitUri = resUri(context, R.drawable.test_permit)
 
         val profileUrl = uploadCompressedImage(context, selfieUri, "users/$uid/profile.jpg")
-        val selfieVerificationUrl = uploadCompressedImage(context, selfieUri, "verifications/$uid/selfie.jpg")
-        val idVerificationUrl = uploadCompressedImage(context, idUri, "verifications/$uid/id.jpg")
-        val propertyVerificationUrl = uploadCompressedImage(context, permitUri, "verifications/$uid/property.jpg")
+        val permitUrl = uploadCompressedImage(context, permitUri, "verifications/$uid/property.jpg")
 
-        val userDoc = hashMapOf(
-            "uid" to uid,
-            "firstName" to firstName,
-            "lastName" to lastName,
-            "email" to email,
-            "role" to "landlord",
-            "verified" to false,
-            "isBanned" to false,
-            "bannedAt" to null,
-            "bannedBy" to "",
-            "banReason" to "",
-            "profileImageUrl" to profileUrl,
-            "businessPermitUrl" to propertyVerificationUrl
-        )
-
-        db.collection("users").document(uid).set(userDoc).await()
-
-        val verificationDoc = hashMapOf(
-            "selfieUrl" to selfieVerificationUrl,
-            "idUrl" to idVerificationUrl,
-            "propertyUrl" to propertyVerificationUrl,
-            "status" to "pending",
-            "submittedAt" to FieldValue.serverTimestamp()
-        )
-
-        db.collection("verifications").document(uid).set(verificationDoc).await()
+        db.collection("users").document(uid).set(
+            mapOf(
+                "uid" to uid,
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "email" to email,
+                "role" to "landlord",
+                "profileImageUrl" to profileUrl,
+                "businessPermitUrl" to permitUrl
+            )
+        ).await()
 
         return uid
     }
@@ -279,25 +229,20 @@ object SampleAccountSeeder {
 
         val res = auth.createUserWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD).await()
         val uid = res.user!!.uid
-        val displayName = "$ADMIN_FIRST $ADMIN_LAST"
-        res.user?.updateProfile(userProfileChangeRequest { this.displayName = displayName })?.await()
 
-        val selfieUri = resUri(context, R.drawable.test_pfp)
+        val selfieUri = resUri(context, getProfileResId(context, ADMIN_FIRST))
         val profileUrl = uploadCompressedImage(context, selfieUri, "users/$uid/profile.jpg")
 
-        val userDoc = hashMapOf(
-            "uid" to uid,
-            "firstName" to ADMIN_FIRST,
-            "lastName" to ADMIN_LAST,
-            "email" to ADMIN_EMAIL,
-            "role" to "administrator",
-            "verified" to true,
-            "isBanned" to false,
-            "profileImageUrl" to profileUrl,
-            "businessPermitUrl" to ""
-        )
-
-        db.collection("users").document(uid).set(userDoc).await()
+        db.collection("users").document(uid).set(
+            mapOf(
+                "uid" to uid,
+                "firstName" to ADMIN_FIRST,
+                "lastName" to ADMIN_LAST,
+                "email" to ADMIN_EMAIL,
+                "role" to "administrator",
+                "profileImageUrl" to profileUrl
+            )
+        ).await()
 
         return uid
     }

@@ -83,29 +83,30 @@ class UserRepository {
     ) {
         try {
             val userDoc = db.collection("users").document(uid).get().await()
-            val role = userDoc.getString("role") ?: ""
-            val originalRole = userDoc.getString("originalRole") ?: role  // Fallback to current role if not set
+            val currentRole = userDoc.getString("role") ?: ""
+            val originalRole = userDoc.getString("originalRole")?.takeIf { it.isNotBlank() } ?: currentRole
             
             val updates = if (banned) {
                 mapOf(
+                    "role" to "banned",
+                    "originalRole" to originalRole,
                     "isBanned" to true,
-                    "role" to "banned",  // Set role to banned
-                    "originalRole" to role,  // Store the original role to restore later
                     "bannedAt" to Timestamp.now(),
                     "bannedBy" to adminUid,
                     "banReason" to reason
                 )
             } else {
                 mapOf(
+                    "role" to originalRole,
                     "isBanned" to false,
-                    "role" to originalRole,  // Restore to original role
                     "bannedAt" to null,
                     "bannedBy" to "",
                     "banReason" to ""
                 )
             }
             db.collection("users").document(uid).update(updates).await()
-            if (role == "landlord" || (banned && originalRole == "landlord")) {
+            
+            if (originalRole == "landlord") {
                 if (banned) {
                     delistLandlordListings(uid, adminUid, reason)
                 } else {
@@ -275,29 +276,18 @@ class BanAppealRepository {
             val userId = appealDoc.getString("userId") ?: return false
             val status = if (approved) "approved" else "rejected"
 
-            val batch = db.batch()
-            batch.update(
-                appealRef,
-                mapOf(
-                    "status" to status,
-                    "reviewedAt" to Timestamp.now(),
-                    "reviewedBy" to adminUid,
-                    "reviewNotes" to notes.trim()
-                )
-            )
-            if (approved) {
-                val userRef = db.collection("users").document(userId)
-                batch.update(
-                    userRef,
+            db.runTransaction { transaction ->
+                transaction.update(
+                    appealRef,
                     mapOf(
-                        "isBanned" to false,
-                        "bannedAt" to null,
-                        "bannedBy" to "",
-                        "banReason" to ""
+                        "status" to status,
+                        "reviewedAt" to Timestamp.now(),
+                        "reviewedBy" to adminUid,
+                        "reviewNotes" to notes.trim()
                     )
                 )
-            }
-            batch.commit().await()
+            }.await()
+
             if (approved) {
                 UserRepository().setUserBanStatus(
                     uid = userId,

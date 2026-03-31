@@ -20,7 +20,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,8 +68,12 @@ import io.github.howshous.data.models.Listing
 import io.github.howshous.R
 import io.github.howshous.data.models.UserProfile
 import io.github.howshous.ui.components.ListingCard
+import io.github.howshous.ui.components.DebouncedIconButton
 import io.github.howshous.ui.data.readUidFlow
+import io.github.howshous.ui.theme.AlertOrange
+import io.github.howshous.ui.theme.LandlordBlueAlt
 import io.github.howshous.ui.theme.SurfaceLight
+import io.github.howshous.ui.theme.TenantGreenAlt
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,7 +96,7 @@ fun AdminHome(nav: NavController) {
         val appeals = appealRepo.getPendingCount()
         pending = review.size
         totalListings = all.size
-        bannedUsers = users.count { it.isBanned }
+        bannedUsers = users.count { it.role == "banned" }
         pendingAppeals = appeals
         isLoading = false
     }
@@ -389,24 +397,42 @@ fun AdminListings(nav: NavController) {
 
 @ExperimentalMaterialApi
 @Composable
-fun AdminUsers() {
+fun AdminUsers(nav: NavController) {
     val context = LocalContext.current
     val adminUid by readUidFlow(context).collectAsState(initial = "")
     val userRepo = remember { UserRepository() }
     val scope = rememberCoroutineScope()
     var allUsers by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var roleFilter by remember { mutableStateOf("all") }
     var statusFilter by remember { mutableStateOf("all") }
     var showFilters by remember { mutableStateOf(true) }
     var showBanDialog by remember { mutableStateOf(false) }
-    var showUnbanDialog by remember { mutableStateOf(false) }
     var banReason by remember { mutableStateOf("") }
     var banReasonError by remember { mutableStateOf("") }
     var pendingUser by remember { mutableStateOf<UserProfile?>(null) }
     val roleOptions = remember { listOf("all", "landlord", "tenant") }
     val statusOptions = remember { listOf("all", "active", "banned") }
+
+    fun refreshUsers() {
+        isRefreshing = true
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .get()
+            .addOnSuccessListener { snap ->
+                allUsers = snap.documents.mapNotNull { doc ->
+                    doc.toObject(UserProfile::class.java)?.copy(uid = doc.id)
+                }.filter { it.role == "tenant" || it.role == "landlord" || it.role == "banned" }
+                    .sortedBy { it.role }
+                isLoading = false
+                isRefreshing = false
+            }
+            .addOnFailureListener {
+                isRefreshing = false
+            }
+    }
 
     DisposableEffect(Unit) {
         val reg: ListenerRegistration = FirebaseFirestore.getInstance()
@@ -423,12 +449,16 @@ fun AdminUsers() {
         onDispose { reg.remove() }
     }
 
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = { refreshUsers() }
+    )
+
     val normalizedQuery = searchQuery.trim().lowercase()
-    val baseUsers = allUsers.filter { it.role == "tenant" || it.role == "landlord" || it.role == "banned" }
     val searchedUsers = if (normalizedQuery.isBlank()) {
-        baseUsers
+        allUsers
     } else {
-        baseUsers.filter { user ->
+        allUsers.filter { user ->
             val fullName = "${user.firstName} ${user.lastName}".trim().lowercase()
             fullName.contains(normalizedQuery) ||
                 user.email.lowercase().contains(normalizedQuery) ||
@@ -436,17 +466,17 @@ fun AdminUsers() {
         }
     }
     val roleFiltered = when (roleFilter) {
-        "tenant" -> searchedUsers.filter { it.role == "tenant" }
-        "landlord" -> searchedUsers.filter { it.role == "landlord" }
+        "tenant" -> searchedUsers.filter { it.originalRole == "tenant" || (it.originalRole.isBlank() && it.role == "tenant") }
+        "landlord" -> searchedUsers.filter { it.originalRole == "landlord" || (it.originalRole.isBlank() && it.role == "landlord") }
         else -> searchedUsers
     }
     val statusFiltered = when (statusFilter) {
-        "banned" -> roleFiltered.filter { it.isBanned }
-        "active" -> roleFiltered.filter { !it.isBanned }
+        "banned" -> roleFiltered.filter { it.role == "banned" }
+        "active" -> roleFiltered.filter { it.role != "banned" }
         else -> roleFiltered
     }
-    val landlords = statusFiltered.filter { it.role == "landlord" || (it.role == "banned" && it.originalRole == "landlord") }
-    val tenants = statusFiltered.filter { it.role == "tenant" || (it.role == "banned" && it.originalRole == "tenant") }
+    val landlords = statusFiltered.filter { it.originalRole == "landlord" || (it.originalRole.isBlank() && it.role == "landlord") }
+    val tenants = statusFiltered.filter { it.originalRole == "tenant" || (it.originalRole.isBlank() && it.role == "tenant") }
 
     Column(
         modifier = Modifier
@@ -454,7 +484,19 @@ fun AdminUsers() {
             .background(SurfaceLight)
             .padding(16.dp)
     ) {
-            Text("Account Moderation", style = MaterialTheme.typography.headlineSmall)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Account Moderation", style = MaterialTheme.typography.headlineSmall)
+                Button(
+                    onClick = { nav.navigate("admin_appeals") },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B8D45))
+                ) {
+                    Text("Appeals", color = Color.White)
+                }
+            }
             Spacer(Modifier.height(12.dp))
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -494,168 +536,193 @@ fun AdminUsers() {
                 CollapseChevron(expanded = showFilters, onToggle = { showFilters = !showFilters })
                 Spacer(Modifier.height(12.dp))
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    Text("Landlords", style = MaterialTheme.typography.titleMedium)
-                }
-                if (landlords.isEmpty()) {
-                    item { Text("No landlords match the current filters.", style = MaterialTheme.typography.bodyMedium) }
-                } else {
-                    items(landlords) { user ->
-                        val isBanned = user.isBanned
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isBanned) Color(0xFFFFEBEE) else Color.White
-                            ),
-                            border = if (isBanned) {
-                                BorderStroke(1.dp, Color(0xFFB00020))
-                            } else null
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (user.profileImageUrl.isNotBlank()) {
-                                        AsyncImage(
-                                            model = user.profileImageUrl,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .clip(CircleShape)
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFFE0E0E0)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.i_user),
+                Box(modifier = Modifier.fillMaxSize().pullRefresh(pullRefreshState)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    item {
+                        Text("Landlords", style = MaterialTheme.typography.titleMedium)
+                    }
+                    if (landlords.isEmpty()) {
+                        item { Text("No landlords match the current filters.", style = MaterialTheme.typography.bodyMedium) }
+                    } else {
+                        items(landlords) { user ->
+                            val isBanned = user.role == "banned"
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isBanned) Color(0xFFFFEBEE) else Color.White
+                                ),
+                                border = if (isBanned) {
+                                    BorderStroke(1.dp, Color(0xFFB00020))
+                                } else null
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (user.profileImageUrl.isNotBlank()) {
+                                            AsyncImage(
+                                                model = user.profileImageUrl,
                                                 contentDescription = null,
-                                                tint = Color(0xFF9E9E9E)
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .clip(CircleShape)
                                             )
-                                        }
-                                    }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Text("${user.firstName} ${user.lastName}".trim(), style = MaterialTheme.typography.titleSmall)
-                                            if (isBanned) {
-                                                Text(
-                                                    "BANNED",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = Color(0xFFB00020)
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFFE0E0E0)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.i_user),
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF9E9E9E)
                                                 )
                                             }
                                         }
-                                        Text(user.email, style = MaterialTheme.typography.bodySmall)
-                                        Text("Role: ${user.role}", style = MaterialTheme.typography.bodySmall)
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("${user.firstName} ${user.lastName}".trim(), style = MaterialTheme.typography.titleSmall)
+                                            Text(user.email, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                        val displayStatus = if (isBanned) "BANNED" else user.role
+                                        val statusColor = when (user.role) {
+                                            "banned" -> Color(0xFFB00020)
+                                            "landlord" -> LandlordBlueAlt
+                                            "tenant" -> TenantGreenAlt
+                                            else -> Color.Gray
+                                        }
+                                        Text(
+                                            displayStatus.uppercase(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = statusColor
+                                        )
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Button(
+                                        onClick = {
+                                            if (isBanned) {
+                                                scope.launch {
+                                                    userRepo.setUserBanStatus(
+                                                        uid = user.uid,
+                                                        banned = false,
+                                                        adminUid = adminUid,
+                                                        reason = ""
+                                                    )
+                                                }
+                                            } else {
+                                                pendingUser = user
+                                                banReason = ""
+                                                banReasonError = ""
+                                                showBanDialog = true
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isBanned) AlertOrange else Color(0xFFB00020)
+                                        )
+                                    ) {
+                                        Text(if (isBanned) "Unban Account" else "Ban Account", color = Color.White)
                                     }
                                 }
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
-                                        pendingUser = user
-                                        if (isBanned) {
-                                            showUnbanDialog = true
+                            }
+                        }
+                    }
+                    item {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Tenants", style = MaterialTheme.typography.titleMedium)
+                    }
+                    if (tenants.isEmpty()) {
+                        item { Text("No tenants match the current filters.", style = MaterialTheme.typography.bodyMedium) }
+                    } else {
+                        items(tenants) { user ->
+                            val isBanned = user.role == "banned"
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isBanned) Color(0xFFFFEBEE) else Color.White
+                                ),
+                                border = if (isBanned) {
+                                    BorderStroke(1.dp, Color(0xFFB00020))
+                                } else null
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (user.profileImageUrl.isNotBlank()) {
+                                            AsyncImage(
+                                                model = user.profileImageUrl,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .clip(CircleShape)
+                                            )
                                         } else {
-                                            banReason = ""
-                                            banReasonError = ""
-                                            showBanDialog = true
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(44.dp)
+                                                    .clip(CircleShape)
+                                                    .background(Color(0xFFE0E0E0)),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(R.drawable.i_user),
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF9E9E9E)
+                                                )
+                                            }
                                         }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isBanned) Color(0xFF1B8D45) else Color(0xFFB00020)
-                                    )
-                                ) {
-                                    Text(if (isBanned) "Unban Account" else "Ban Account", color = Color.White)
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("${user.firstName} ${user.lastName}".trim(), style = MaterialTheme.typography.titleSmall)
+                                            Text(user.email, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                        val displayStatus = if (isBanned) "BANNED" else user.role
+                                        val statusColor = when (user.role) {
+                                            "banned" -> Color(0xFFB00020)
+                                            "landlord" -> LandlordBlueAlt
+                                            "tenant" -> TenantGreenAlt
+                                            else -> Color.Gray
+                                        }
+                                        Text(
+                                            displayStatus.uppercase(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = statusColor
+                                        )
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Button(
+                                        onClick = {
+                                            if (isBanned) {
+                                                scope.launch {
+                                                    userRepo.setUserBanStatus(
+                                                        uid = user.uid,
+                                                        banned = false,
+                                                        adminUid = adminUid,
+                                                        reason = ""
+                                                    )
+                                                }
+                                            } else {
+                                                pendingUser = user
+                                                banReason = ""
+                                                banReasonError = ""
+                                                showBanDialog = true
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isBanned) AlertOrange else Color(0xFFB00020)
+                                        )
+                                    ) {
+                                        Text(if (isBanned) "Unban Account" else "Ban Account", color = Color.White)
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Tenants", style = MaterialTheme.typography.titleMedium)
-                }
-                if (tenants.isEmpty()) {
-                    item { Text("No tenants match the current filters.", style = MaterialTheme.typography.bodyMedium) }
-                } else {
-                    items(tenants) { user ->
-                        val isBanned = user.isBanned
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isBanned) Color(0xFFFFEBEE) else Color.White
-                            ),
-                            border = if (isBanned) {
-                                BorderStroke(1.dp, Color(0xFFB00020))
-                            } else null
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (user.profileImageUrl.isNotBlank()) {
-                                        AsyncImage(
-                                            model = user.profileImageUrl,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .clip(CircleShape)
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(44.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFFE0E0E0)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                painter = painterResource(R.drawable.i_user),
-                                                contentDescription = null,
-                                                tint = Color(0xFF9E9E9E)
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Text("${user.firstName} ${user.lastName}".trim(), style = MaterialTheme.typography.titleSmall)
-                                            if (isBanned) {
-                                                Text(
-                                                    "BANNED",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = Color(0xFFB00020)
-                                                )
-                                            }
-                                        }
-                                        Text(user.email, style = MaterialTheme.typography.bodySmall)
-                                        Text("Role: ${user.role}", style = MaterialTheme.typography.bodySmall)
-                                    }
-                                }
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
-                                        pendingUser = user
-                                        if (isBanned) {
-                                            showUnbanDialog = true
-                                        } else {
-                                            banReason = ""
-                                            banReasonError = ""
-                                            showBanDialog = true
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isBanned) Color(0xFF1B8D45) else Color(0xFFB00020)
-                                    )
-                                ) {
-                                    Text(if (isBanned) "Unban Account" else "Ban Account", color = Color.White)
-                                }
-                            }
-                        }
-                    }
-                }
+                PullRefreshIndicator(
+                    refreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
             }
         }
     }
@@ -716,40 +783,11 @@ fun AdminUsers() {
             }
         )
     }
-
-    if (showUnbanDialog && pendingUser != null) {
-        AlertDialog(
-            onDismissRequest = { showUnbanDialog = false },
-            title = { Text("Unban Account") },
-            text = { Text("Reinstate this account? Listings will return to under review.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val target = pendingUser ?: return@TextButton
-                        scope.launch {
-                            userRepo.setUserBanStatus(
-                                uid = target.uid,
-                                banned = false,
-                                adminUid = adminUid,
-                                reason = ""
-                            )
-                            showUnbanDialog = false
-                        }
-                    }
-                ) { Text("Confirm", color = Color(0xFF1B8D45)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showUnbanDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminAppeals() {
+fun AdminAppeals(nav: NavController) {
     val context = LocalContext.current
     val adminUid by readUidFlow(context).collectAsState(initial = "")
     val appealRepo = remember { BanAppealRepository() }
@@ -779,7 +817,16 @@ fun AdminAppeals() {
             .background(SurfaceLight)
             .padding(16.dp)
     ) {
-        Text("Ban Appeals", style = MaterialTheme.typography.headlineSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DebouncedIconButton(onClick = { nav.popBackStack() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Spacer(Modifier.width(8.dp))
+            Text("Ban Appeals", style = MaterialTheme.typography.headlineSmall)
+        }
         Spacer(Modifier.height(12.dp))
         if (isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
