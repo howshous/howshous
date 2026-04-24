@@ -22,6 +22,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -45,22 +48,37 @@ import io.github.howshous.ui.components.FilterChip as AmenityFilterChip
 @Composable
 fun TenantHome(nav: NavController) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val uid by readUidFlow(context).collectAsState(initial = "")
     val viewModel: HomeViewModel = viewModel()
-    val contractsViewModel: io.github.howshous.ui.viewmodels.ContractsViewModel = viewModel()
     val isLoading by viewModel.isLoading.collectAsState()
     val listings by viewModel.tenantRecentListings.collectAsState()
     var hasContract by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val contractRepository = remember { io.github.howshous.data.firestore.ContractRepository() }
 
+    fun refreshHasContract() {
+        if (uid.isEmpty()) return
+        scope.launch {
+            hasContract = contractRepository.hasSignedContract(uid)
+        }
+    }
+
     LaunchedEffect(uid) {
         if (uid.isNotEmpty()) {
             viewModel.loadTenantHome(uid)
-            scope.launch {
-                hasContract = contractRepository.hasSignedContract(uid)
+            refreshHasContract()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, uid) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshHasContract()
             }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(
@@ -150,6 +168,12 @@ fun TenantSearch(nav: NavController) {
     val scope = rememberCoroutineScope()
     var sessionId by remember { mutableStateOf<String?>(null) }
     var showSearch by remember { mutableStateOf(true) }
+
+    LaunchedEffect(uid) {
+        if (uid.isNotBlank()) {
+            viewModel.loadAllListings(uid)
+        }
+    }
 
     LaunchedEffect(Unit) {
         sessionId = ensureSessionId(context)
@@ -507,6 +531,13 @@ fun TenantAccount(nav: NavController) {
                     Spacer(Modifier.height(8.dp))
                     Text(profile!!.email, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(8.dp))
+                    if (profile!!.gender.isNotBlank()) {
+                        Text(
+                            "Gender: ${profile!!.gender.replaceFirstChar { it.uppercase() }}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
                     Text("Verified: ${if (profile!!.verified) "✓" else "✗"}", style = MaterialTheme.typography.bodySmall)
                 }
             }

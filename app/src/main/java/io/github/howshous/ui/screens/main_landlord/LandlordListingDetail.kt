@@ -77,7 +77,7 @@ fun LandlordListingDetail(nav: NavController, listingId: String = "") {
     var isTerminating by remember { mutableStateOf(false) }
 
     LaunchedEffect(listingId) {
-        viewModel.loadListing(listingId)
+        viewModel.observeListing(listingId)
     }
 
     DisposableEffect(listingId) {

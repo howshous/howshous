@@ -33,6 +33,19 @@ android {
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "OPENAI_API_KEY", "\"$openaiApiKey\"")
         buildConfigField("String", "GROQ_API_KEY", "\"$groqApiKey\"")
+
+        // Production-safe default: do NOT use Firebase emulators on phones.
+        buildConfigField("Boolean", "USE_FIREBASE_EMULATORS", "false")
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField("Boolean", "USE_FIREBASE_EMULATORS", "true")
+        }
+        release {
+            buildConfigField("Boolean", "USE_FIREBASE_EMULATORS", "false")
+            isMinifyEnabled = false
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -89,6 +102,9 @@ dependencies {
     implementation("com.github.yalantis:ucrop:2.2.8")
 
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Background polling for notifications (free plan alternative to Cloud Functions push)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
 }
 

@@ -51,7 +51,7 @@ class HomeViewModel : ViewModel() {
     fun loadTenantHome(tenantId: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            val listings = listingRepo.getAllListings().take(5)
+            val listings = listingRepo.getAllListingsForTenant(tenantId).take(5)
             val rentals = rentalRepo.getRentalsForTenant(tenantId)
             _tenantRecentListings.value = listings
             _tenantRentals.value = rentals
@@ -62,6 +62,7 @@ class HomeViewModel : ViewModel() {
     fun loadLandlordHome(landlordId: String) {
         viewModelScope.launch {
             _isLoading.value = true
+            listingRepo.backfillLandlordListingVisibility(landlordId)
             val listings = listingRepo.getListingsForLandlord(landlordId)
             val rentals = rentalRepo.getRentalsForLandlord(landlordId)
 

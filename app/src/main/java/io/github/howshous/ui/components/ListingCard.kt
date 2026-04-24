@@ -108,6 +108,15 @@ fun ListingCard(
                     style = MaterialTheme.typography.labelLarge,
                     color = PricePointGreen
                 )
+                val maxOccupancy = listing.capacity.coerceAtLeast(1)
+                val currentOccupancy = listing.currentOccupancy.coerceAtLeast(0).coerceAtMost(maxOccupancy)
+                val remainingSlots = (maxOccupancy - currentOccupancy).coerceAtLeast(0)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Slots: $currentOccupancy / $maxOccupancy occupied, $remainingSlots available",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = slightlyGray
+                )
 
                 Spacer(Modifier.height(4.dp))
                 ReviewSummaryRow(summary = listing.reviewSummary, compact = true)

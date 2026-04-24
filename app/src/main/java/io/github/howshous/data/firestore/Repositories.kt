@@ -306,19 +306,93 @@ class BanAppealRepository {
 
 class ListingRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val cacheTtlMs = 30_000L
+    private val tenantGenderCache = mutableMapOf<String, String>()
+    private val tenantListingsCache = mutableMapOf<String, Pair<Long, List<Listing>>>()
 
-    suspend fun getAllListings(): List<Listing> {
+    private suspend fun getTenantGender(tenantId: String): String {
+        if (tenantId.isBlank()) return ""
+        tenantGenderCache[tenantId]?.let { return it }
+        return try {
+            val gender = db.collection("users").document(tenantId).get().await()
+                .getString("gender")
+                .orEmpty()
+                .trim()
+                .lowercase()
+            tenantGenderCache[tenantId] = gender
+            gender
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ""
+        }
+    }
+
+    /**
+     * Fetches active listings then filters by open slots + gender policy in app.
+     * (Firestore query uses only [status] so legacy docs without genderPolicy/hasAvailableSlots still appear.)
+     */
+    suspend fun getAllListingsForTenant(tenantId: String): List<Listing> {
+        val now = System.currentTimeMillis()
+        tenantListingsCache[tenantId]?.let { (cachedAt, cachedListings) ->
+            if (now - cachedAt <= cacheTtlMs) return cachedListings
+        }
+
+        val tenantGender = getTenantGender(tenantId)
+
         return try {
             val snap = db.collection("listings")
                 .whereEqualTo("status", "active")
                 .get()
                 .await()
-            snap.documents.mapNotNull { doc ->
+            val listings = snap.documents.mapNotNull { doc ->
                 doc.toObject(Listing::class.java)?.copy(id = doc.id)
-            }
+            }.filter { listingMatchesTenantListingFilters(it, tenantGender) }
+            tenantListingsCache[tenantId] = now to listings
+            listings
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
+        }
+    }
+
+    private fun listingMatchesTenantListingFilters(listing: Listing, tenantGender: String): Boolean {
+        val maxCap = listing.capacity.coerceAtLeast(1)
+        val occ = listing.currentOccupancy.coerceAtLeast(0).coerceAtMost(maxCap)
+        val hasOpenSlots = occ < maxCap
+        if (!hasOpenSlots) return false
+
+        val policy = listing.genderPolicy.trim().lowercase().ifBlank { "any" }
+        return when {
+            policy == "any" -> true
+            tenantGender == "female" || tenantGender == "male" -> policy == tenantGender
+            else -> policy == "any"
+        }
+    }
+
+    /** Landlord-only: fills missing occupancy/gender fields on this landlord's listings (Firestore rules allow it). */
+    suspend fun backfillLandlordListingVisibility(landlordId: String, limit: Long = 200): Int {
+        if (landlordId.isBlank()) return 0
+        return try {
+            val snap = db.collection("listings")
+                .whereEqualTo("landlordId", landlordId)
+                .limit(limit)
+                .get()
+                .await()
+
+            var updatedCount = 0
+            for (doc in snap.documents) {
+                val listingId = doc.id
+                if (doc.getString("genderPolicy").isNullOrBlank()) {
+                    doc.reference.update("genderPolicy", "any").await()
+                    updatedCount++
+                }
+                syncListingOccupancy(listingId)
+            }
+            if (updatedCount > 0) tenantListingsCache.clear()
+            updatedCount
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0
         }
     }
 
@@ -390,10 +464,37 @@ class ListingRepository {
         }
     }
 
+    fun listenToListing(
+        id: String,
+        onUpdate: (Listing?) -> Unit
+    ): ListenerRegistration? {
+        if (id.isBlank()) return null
+        return db.collection("listings").document(id)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    err.printStackTrace()
+                    onUpdate(null)
+                    return@addSnapshotListener
+                }
+                if (snap == null || !snap.exists()) {
+                    onUpdate(null)
+                    return@addSnapshotListener
+                }
+                val listing = snap.toObject(Listing::class.java)?.copy(id = snap.id)
+                onUpdate(listing)
+            }
+    }
+
     suspend fun createListing(listing: Listing): String {
         return try {
+            val normalizedCapacity = listing.capacity.coerceAtLeast(1)
+            val normalizedOccupancy = listing.currentOccupancy.coerceAtLeast(0).coerceAtMost(normalizedCapacity)
             val forWrite = listing.copy(
                 id = "",
+                capacity = normalizedCapacity,
+                currentOccupancy = normalizedOccupancy,
+                hasAvailableSlots = normalizedOccupancy < normalizedCapacity,
+                genderPolicy = listing.genderPolicy.trim().lowercase().ifBlank { "any" },
                 status = "under_review",
                 previousStatus = if (listing.status == "inactive") "inactive" else listing.previousStatus,
                 reviewedAt = null,
@@ -403,9 +504,11 @@ class ListingRepository {
             )
             if (listing.id.isNotBlank()) {
                 db.collection("listings").document(listing.id).set(forWrite).await()
+                tenantListingsCache.clear()
                 listing.id
             } else {
                 val ref = db.collection("listings").add(forWrite).await()
+                tenantListingsCache.clear()
                 ref.id
             }
         } catch (e: Exception) {
@@ -414,9 +517,43 @@ class ListingRepository {
         }
     }
 
+    suspend fun syncListingOccupancy(listingId: String): Int {
+        if (listingId.isBlank()) return 0
+        return try {
+            val listingRef = db.collection("listings").document(listingId)
+            val listingSnap = listingRef.get().await()
+            val capacity = (listingSnap.getLong("capacity")?.toInt() ?: 1).coerceAtLeast(1)
+
+            val tenanciesSnap = db.collection("tenancies")
+                .whereEqualTo("listingId", listingId)
+                .get()
+                .await()
+
+            val activeStatuses = setOf("signed", "confirmed", "needs_resign", "active")
+            val occupied = tenanciesSnap.documents.count { doc ->
+                val status = doc.getString("status").orEmpty().lowercase()
+                activeStatuses.contains(status)
+            }
+            val normalized = occupied.coerceAtMost(capacity)
+
+            listingRef.update(
+                mapOf(
+                    "currentOccupancy" to normalized,
+                    "hasAvailableSlots" to (normalized < capacity)
+                )
+            ).await()
+            tenantListingsCache.clear()
+            normalized
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0
+        }
+    }
+
     suspend fun updateListing(id: String, updates: Map<String, Any>) {
         try {
             db.collection("listings").document(id).update(updates).await()
+            tenantListingsCache.clear()
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -765,6 +902,7 @@ class NotificationRepository {
                 "title" to title,
                 "message" to message,
                 "read" to false,
+                "notified" to false,
                 "timestamp" to Timestamp.now(),
                 "actionUrl" to actionUrl
             )
@@ -790,6 +928,41 @@ class NotificationRepository {
         } catch (e: Exception) {
             e.printStackTrace()
             emptyList()
+        }
+    }
+
+    fun listenNotificationsForUser(
+        userId: String,
+        limit: Long = 20,
+        onUpdate: (List<Notification>) -> Unit
+    ): ListenerRegistration? {
+        if (userId.isBlank()) return null
+        return db.collection("notifications")
+            .whereEqualTo("userId", userId)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(limit)
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null) {
+                    error?.printStackTrace()
+                    return@addSnapshotListener
+                }
+                val notifications = snap.documents.mapNotNull { doc ->
+                    doc.toObject(Notification::class.java)?.copy(id = doc.id)
+                }
+                onUpdate(notifications)
+            }
+    }
+
+    suspend fun markNotified(notificationId: String) {
+        try {
+            db.collection("notifications").document(notificationId).update(
+                mapOf(
+                    "notified" to true,
+                    "notifiedAt" to Timestamp.now()
+                )
+            ).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -840,6 +1013,7 @@ class RentalRepository {
 
 class TenancyRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val listingRepository = ListingRepository()
 
     suspend fun getTenanciesForTenant(tenantId: String): List<io.github.howshous.data.models.Tenancy> {
         return try {
@@ -907,6 +1081,7 @@ class TenancyRepository {
                     "updatedAt" to Timestamp.now()
                 )
             ).await()
+            listingRepository.syncListingOccupancy(listingId)
         } catch (e: Exception) {
             e.printStackTrace()
         }

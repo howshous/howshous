@@ -18,6 +18,8 @@ object SessionKeys {
     val WELCOME_SHOWN = booleanPreferencesKey("welcome_shown")
     val SESSION_ID = stringPreferencesKey("session_id")
     val SESSION_LAST_ACTIVE = longPreferencesKey("session_last_active")
+    val LAST_NOTIF_TS = longPreferencesKey("last_notif_ts")
+    val PHONE_NOTIFS_ENABLED = booleanPreferencesKey("phone_notifs_enabled")
 }
 
 suspend fun saveRole(context: Context, role: String) {
@@ -72,4 +74,19 @@ suspend fun ensureSessionId(context: Context): String {
 
 suspend fun clearSession(context: Context) {
     context.dataStore.edit { it.clear() }
+}
+
+suspend fun saveLastNotifiedAtMs(context: Context, value: Long) {
+    context.dataStore.edit { it[SessionKeys.LAST_NOTIF_TS] = value }
+}
+
+suspend fun readLastNotifiedAtMs(context: Context): Long {
+    return context.dataStore.data.map { it[SessionKeys.LAST_NOTIF_TS] ?: 0L }.first()
+}
+
+fun readPhoneNotifsEnabledFlow(context: Context): Flow<Boolean> =
+    context.dataStore.data.map { it[SessionKeys.PHONE_NOTIFS_ENABLED] ?: true }
+
+suspend fun setPhoneNotifsEnabled(context: Context, enabled: Boolean) {
+    context.dataStore.edit { it[SessionKeys.PHONE_NOTIFS_ENABLED] = enabled }
 }

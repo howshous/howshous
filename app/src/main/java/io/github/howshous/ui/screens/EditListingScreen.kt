@@ -98,6 +98,9 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
     var price by remember { mutableStateOf("") }
     var deposit by remember { mutableStateOf("") }
     var capacity by remember { mutableStateOf("1") }
+    var currentOccupancy by remember { mutableStateOf(0) }
+    var genderPolicy by remember { mutableStateOf("any") }
+    var genderPolicyExpanded by remember { mutableStateOf(false) }
     var contractTitle by remember { mutableStateOf(defaultContractTitle()) }
     var contractTerms by remember { mutableStateOf(defaultContractTerms()) }
     var selectedAmenities by remember { mutableStateOf(setOf<String>()) }
@@ -163,6 +166,8 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
             price = listing.price.toString()
             deposit = listing.deposit.toString()
             capacity = listing.capacity.toString()
+            currentOccupancy = listing.currentOccupancy
+            genderPolicy = listing.genderPolicy.ifBlank { "any" }
             selectedAmenities = listing.amenities.toSet()
             existingPhotoUrls = listing.photos
             existingLandDeedUrl = listing.landDeedUrl
@@ -421,6 +426,53 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
+                        ExposedDropdownMenuBox(
+                            expanded = genderPolicyExpanded,
+                            onExpandedChange = { genderPolicyExpanded = !genderPolicyExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = when (genderPolicy) {
+                                    "female" -> "Females only"
+                                    "male" -> "Males only"
+                                    else -> "Any gender"
+                                },
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("Gender policy") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderPolicyExpanded) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = inputColors(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = genderPolicyExpanded,
+                                onDismissRequest = { genderPolicyExpanded = false }
+                            ) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Females only") },
+                                    onClick = {
+                                        genderPolicy = "female"
+                                        genderPolicyExpanded = false
+                                    }
+                                )
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Males only") },
+                                    onClick = {
+                                        genderPolicy = "male"
+                                        genderPolicyExpanded = false
+                                    }
+                                )
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text("Any gender") },
+                                    onClick = {
+                                        genderPolicy = "any"
+                                        genderPolicyExpanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -803,6 +855,8 @@ fun EditListingScreen(nav: NavController, listingId: String = "") {
                                         "price" to priceValue,
                                         "deposit" to depositValue,
                                         "capacity" to capacityValue,
+                                        "genderPolicy" to genderPolicy,
+                                        "hasAvailableSlots" to (currentOccupancy < capacityValue),
                                         "amenities" to selectedAmenities.toList(),
                                         "status" to "under_review",
                                         "reviewedBy" to "",

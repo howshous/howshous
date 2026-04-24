@@ -210,6 +210,10 @@ object SampleListingsGenerator {
                 "price" to template.price,
                 "deposit" to template.deposit,
                 "capacity" to template.capacity,
+                // Required by Firestore rules for listing creation
+                "genderPolicy" to "any",
+                "currentOccupancy" to 0,
+                "hasAvailableSlots" to true,
                 "status" to template.status,
                 "reviewStatus" to "under_review",
                 "reviewedBy" to "",

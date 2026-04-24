@@ -163,7 +163,7 @@ class TenantAIHelperViewModel : ViewModel() {
 
     private suspend fun buildListingsJson(): String {
         return runCatching {
-            val allListings = listingRepository.getAllListings()
+            val allListings = listingRepository.getAllListingsForTenant(currentUserId)
             // Filter to only active listings
             val activeListings = allListings.filter { it.status == "active" }
             

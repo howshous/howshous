@@ -28,10 +28,6 @@ class LandlordAnalyticsAIViewModel : ViewModel() {
 
     private var currentUserId: String = ""
     private val requestTimeoutMs = 20_000L
-    private val analyticsKeywords = listOf(
-        "view", "views", "save", "saves", "favorite", "favourite", "message", "messages",
-        "booking", "bookings", "conversion", "rate", "rates", "listing", "insight", "performance", "trend"
-    )
 
     fun initializeChat(userId: String) {
         if (currentUserId == userId && _messages.value.isNotEmpty()) return
@@ -96,11 +92,6 @@ class LandlordAnalyticsAIViewModel : ViewModel() {
         }.toString()
     }
 
-    private fun isOffTopicForLandlordAnalytics(prompt: String): Boolean {
-        val lower = prompt.lowercase()
-        return analyticsKeywords.none { lower.contains(it) }
-    }
-
     fun sendMessage(prompt: String) {
         val trimmed = prompt.trim()
         if (trimmed.isBlank() || _isThinking.value || currentUserId.isBlank()) return
@@ -111,16 +102,6 @@ class LandlordAnalyticsAIViewModel : ViewModel() {
         )
         viewModelScope.launch {
             aiChatRepository.saveMessage(currentUserId, trimmed, true, chatKey)
-            if (isOffTopicForLandlordAnalytics(trimmed)) {
-                val msg = "I can only help with your landlord listing insights. Ask about views, saves, messages, booking/conversion rate, or performance trends."
-                _messages.value = _messages.value + TenantAIMessage(
-                    id = System.currentTimeMillis(),
-                    author = MessageAuthor.AI,
-                    text = msg
-                )
-                aiChatRepository.saveMessage(currentUserId, msg, false, chatKey)
-                return@launch
-            }
             _isThinking.value = true
             val reply = try {
                 withTimeoutOrNull(requestTimeoutMs) {

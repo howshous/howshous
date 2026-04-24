@@ -14,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import io.github.howshous.data.firestore.ContractRepository
@@ -31,6 +34,7 @@ import java.util.*
 @Composable
 fun ViewContractsScreen(nav: NavController) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val uid by readUidFlow(context).collectAsState(initial = "")
     val viewModel: ContractsViewModel = viewModel()
     val contracts by viewModel.signedContracts.collectAsState()
@@ -44,6 +48,16 @@ fun ViewContractsScreen(nav: NavController) {
         if (uid.isNotEmpty()) {
             viewModel.loadSignedContracts(uid)
         }
+    }
+
+    DisposableEffect(lifecycleOwner, uid) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && uid.isNotEmpty()) {
+                viewModel.loadSignedContracts(uid)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(contracts) {

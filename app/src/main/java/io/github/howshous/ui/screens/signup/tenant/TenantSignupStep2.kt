@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,7 @@ import io.github.howshous.ui.viewmodels.SignupViewModel
 fun TenantSignupStep2(nav: NavController, signupVM: SignupViewModel) {
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val context = LocalContext.current
+    val selectedGender by signupVM.tenantGender.collectAsState()
 
     Box(
         modifier = Modifier
@@ -132,7 +134,30 @@ fun TenantSignupStep2(nav: NavController, signupVM: SignupViewModel) {
                 textAlign = TextAlign.Center
             )
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(18.dp))
+
+            Text(
+                "Select your gender",
+                color = Color.White,
+                style = MaterialTheme.typography.titleSmall
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = selectedGender == "female",
+                    onClick = { signupVM.setTenantGender("female") },
+                    label = { Text("Female") }
+                )
+                FilterChip(
+                    selected = selectedGender == "male",
+                    onClick = { signupVM.setTenantGender("male") },
+                    label = { Text("Male") }
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
 
             // OPEN CAMERA button
             Button(
@@ -217,8 +242,11 @@ fun TenantSignupStep2(nav: NavController, signupVM: SignupViewModel) {
                         nav.navigate("tenant_su_complete")
                     }
                 },
-                enabled = selectedImageUri != null,
-                border = BorderStroke(2.dp, if (selectedImageUri != null) Color.White else Color.White.copy(alpha = 0.3f)),
+                enabled = selectedImageUri != null && selectedGender.isNotBlank(),
+                border = BorderStroke(
+                    2.dp,
+                    if (selectedImageUri != null && selectedGender.isNotBlank()) Color.White else Color.White.copy(alpha = 0.3f)
+                ),
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = Color.White,

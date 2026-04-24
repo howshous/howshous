@@ -7,6 +7,8 @@ import kotlinx.coroutines.tasks.await
 
 class ContractRepository {
     private val db = FirebaseFirestore.getInstance()
+    private val listingRepository = ListingRepository()
+    private val activeContractStatuses = setOf("signed", "confirmed", "needs_resign", "active")
 
     suspend fun createContractFromListingTemplate(
         listingId: String,
@@ -143,7 +145,16 @@ class ContractRepository {
                     "createdAt" to Timestamp.now(),
                     "updatedAt" to Timestamp.now()
                 )
-                db.collection("tenancies").document(tenancyId).set(tenancyData).await()
+                try {
+                    db.collection("tenancies").document(tenancyId).set(tenancyData).await()
+                } catch (tenancyError: Exception) {
+                    tenancyError.printStackTrace()
+                }
+                try {
+                    listingRepository.syncListingOccupancy(listingId)
+                } catch (syncError: Exception) {
+                    syncError.printStackTrace()
+                }
             }
             true
         } catch (e: Exception) {
@@ -216,7 +227,6 @@ class ContractRepository {
         return try {
             val snap = db.collection("contracts")
                 .whereEqualTo("tenantId", tenantId)
-                .whereEqualTo("status", "signed")
                 .get()
                 .await()
             
@@ -238,6 +248,8 @@ class ContractRepository {
                     signedAt = data["signedAt"] as? Timestamp,
                     createdAt = data["createdAt"] as? Timestamp
                 )
+            }.filter { contract ->
+                activeContractStatuses.contains(contract.status.lowercase())
             }
             // Sort by signedAt descending (most recent first)
             contracts.sortedByDescending { it.signedAt?.seconds ?: 0L }
@@ -251,11 +263,12 @@ class ContractRepository {
         return try {
             val snap = db.collection("contracts")
                 .whereEqualTo("tenantId", tenantId)
-                .whereEqualTo("status", "signed")
-                .limit(1)
                 .get()
                 .await()
-            !snap.isEmpty
+            snap.documents.any { doc ->
+                val status = doc.getString("status").orEmpty().lowercase()
+                activeContractStatuses.contains(status)
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             false
@@ -267,28 +280,29 @@ class ContractRepository {
             val snap = db.collection("contracts")
                 .whereEqualTo("tenantId", tenantId)
                 .whereEqualTo("listingId", listingId)
-                .whereEqualTo("status", "signed")
-                .limit(1)
                 .get()
                 .await()
-            val doc = snap.documents.firstOrNull() ?: return null
-            val data = doc.data ?: return null
-            Contract(
-                id = doc.id,
-                chatId = data["chatId"] as? String ?: "",
-                listingId = data["listingId"] as? String ?: "",
-                landlordId = data["landlordId"] as? String ?: "",
-                tenantId = data["tenantId"] as? String ?: "",
-                title = data["title"] as? String ?: "",
-                terms = data["terms"] as? String ?: "",
-                monthlyRent = (data["monthlyRent"] as? Number)?.toInt() ?: 0,
-                deposit = (data["deposit"] as? Number)?.toInt() ?: 0,
-                startDate = data["startDate"] as? Timestamp,
-                endDate = data["endDate"] as? Timestamp,
-                status = data["status"] as? String ?: "pending",
-                signedAt = data["signedAt"] as? Timestamp,
-                createdAt = data["createdAt"] as? Timestamp
-            )
+            val contracts = snap.documents.mapNotNull { doc ->
+                val data = doc.data ?: return@mapNotNull null
+                Contract(
+                    id = doc.id,
+                    chatId = data["chatId"] as? String ?: "",
+                    listingId = data["listingId"] as? String ?: "",
+                    landlordId = data["landlordId"] as? String ?: "",
+                    tenantId = data["tenantId"] as? String ?: "",
+                    title = data["title"] as? String ?: "",
+                    terms = data["terms"] as? String ?: "",
+                    monthlyRent = (data["monthlyRent"] as? Number)?.toInt() ?: 0,
+                    deposit = (data["deposit"] as? Number)?.toInt() ?: 0,
+                    startDate = data["startDate"] as? Timestamp,
+                    endDate = data["endDate"] as? Timestamp,
+                    status = data["status"] as? String ?: "pending",
+                    signedAt = data["signedAt"] as? Timestamp,
+                    createdAt = data["createdAt"] as? Timestamp
+                )
+            }.filter { activeContractStatuses.contains(it.status.lowercase()) }
+
+            contracts.maxByOrNull { it.signedAt?.seconds ?: 0L }
         } catch (e: Exception) {
             e.printStackTrace()
             null

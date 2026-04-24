@@ -9,6 +9,7 @@ data class UserProfile(
     val email: String = "",
     val phone: String = "",
     val role: String = "tenant",
+    val gender: String = "",
     val isBanned: Boolean = false,
     val originalRole: String = "",  // Stores the original role when user is banned
     val bannedAt: Timestamp? = null,
@@ -40,6 +41,9 @@ data class Listing(
     val price: Int = 0,
     val deposit: Int = 0,
     val capacity: Int = 1,
+    val currentOccupancy: Int = 0,
+    val hasAvailableSlots: Boolean = true,
+    val genderPolicy: String = "any", // any, female, male
     val status: String = "under_review", // under_review, rejected, active, inactive, delisted
     val previousStatus: String = "", // active/inactive before under_review
     val reviewedAt: Timestamp? = null,
@@ -100,6 +104,8 @@ data class Notification(
     val title: String = "",
     val message: String = "",
     val read: Boolean = false,
+    val notified: Boolean = false,
+    val notifiedAt: Timestamp? = null,
     val timestamp: Timestamp? = null,
     val actionUrl: String = "",
     val listingId: String = "",

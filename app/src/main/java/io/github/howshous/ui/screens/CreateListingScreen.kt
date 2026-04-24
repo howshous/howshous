@@ -97,6 +97,8 @@ fun CreateListingScreen(nav: NavController) {
     var price by remember { mutableStateOf("") }
     var deposit by remember { mutableStateOf("") }
     var capacity by remember { mutableStateOf("1") }
+    var genderPolicy by remember { mutableStateOf("") }
+    var genderPolicyExpanded by remember { mutableStateOf(false) }
     var contractTitle by remember { mutableStateOf(defaultContractTitle()) }
     var contractTerms by remember { mutableStateOf(defaultContractTerms()) }
     var selectedAmenities by remember { mutableStateOf(setOf<String>()) }
@@ -432,6 +434,55 @@ fun CreateListingScreen(nav: NavController) {
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.fillMaxWidth()
                             )
+
+                            ExposedDropdownMenuBox(
+                                expanded = genderPolicyExpanded,
+                                onExpandedChange = { genderPolicyExpanded = !genderPolicyExpanded }
+                            ) {
+                                OutlinedTextField(
+                                    value = when (genderPolicy) {
+                                        "female" -> "Females only"
+                                        "male" -> "Males only"
+                                        "any" -> "Any gender"
+                                        else -> ""
+                                    },
+                                    onValueChange = { },
+                                    readOnly = true,
+                                    label = { Text("Gender policy") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderPolicyExpanded) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = inputColors(accentColor = landlordAccent),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = genderPolicyExpanded,
+                                    onDismissRequest = { genderPolicyExpanded = false }
+                                ) {
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Females only") },
+                                        onClick = {
+                                            genderPolicy = "female"
+                                            genderPolicyExpanded = false
+                                        }
+                                    )
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Males only") },
+                                        onClick = {
+                                            genderPolicy = "male"
+                                            genderPolicyExpanded = false
+                                        }
+                                    )
+                                    androidx.compose.material3.DropdownMenuItem(
+                                        text = { Text("Any gender") },
+                                        onClick = {
+                                            genderPolicy = "any"
+                                            genderPolicyExpanded = false
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -725,6 +776,12 @@ fun CreateListingScreen(nav: NavController) {
                                 }
                                 return@Button
                             }
+                            if (genderPolicy.isBlank()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Please choose a gender policy.")
+                                }
+                                return@Button
+                            }
                             if (landDeedUri == null) {
                                 scope.launch {
                                     snackbarHostState.showSnackbar("Please upload a land deed image.")
@@ -893,6 +950,9 @@ fun CreateListingScreen(nav: NavController) {
                                                     price = priceValue,
                                                     deposit = depositValue,
                                                     capacity = capacityValue,
+                                                    currentOccupancy = 0,
+                                                    hasAvailableSlots = true,
+                                                    genderPolicy = genderPolicy,
                                                     status = "under_review",
                                                     amenities = selectedAmenities.toList(),
                                                     photos = photoUrls,

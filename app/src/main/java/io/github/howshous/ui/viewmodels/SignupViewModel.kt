@@ -30,6 +30,8 @@ class SignupViewModel : ViewModel() {
 
     private val _role = MutableStateFlow("")  // "tenant" or "landlord"
     val role: StateFlow<String> = _role
+    private val _tenantGender = MutableStateFlow("")
+    val tenantGender: StateFlow<String> = _tenantGender
 
 
     // TENANT IMAGES
@@ -74,6 +76,7 @@ class SignupViewModel : ViewModel() {
     fun setContact(v: String) { _contact.value = v }
     fun setPassword(v: String) { _password.value = v }
     fun setRole(v: String) { _role.value = v }
+    fun setTenantGender(v: String) { _tenantGender.value = v }
 
     // TENANT
     suspend fun finishTenantSignup(
@@ -84,9 +87,13 @@ class SignupViewModel : ViewModel() {
 
         val email = contact.value
         val password = password.value
+        val gender = tenantGender.value.trim().lowercase()
 
         if (email.isBlank() || password.isBlank()) {
             return Result.failure(IllegalArgumentException("Email and password are required."))
+        }
+        if (gender !in setOf("female", "male")) {
+            return Result.failure(IllegalArgumentException("Please select your gender to continue."))
         }
 
         val uid = try {
@@ -131,6 +138,7 @@ class SignupViewModel : ViewModel() {
                 "lastName" to lastName.value,
                 "email" to email,
                 "role" to "tenant",
+                "gender" to gender,
                 "verified" to false,
                 "isBanned" to false,
                 "bannedAt" to null,
@@ -262,6 +270,7 @@ class SignupViewModel : ViewModel() {
 
         _tenantSelfie.value = null
         _tenantId.value = null
+        _tenantGender.value = ""
 
         _landlordSelfie.value = null
         _landlordId.value = null
