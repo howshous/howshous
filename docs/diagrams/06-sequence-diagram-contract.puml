@@ -1,0 +1,61 @@
+@startuml Sequence - Contract Workflow
+!theme plain
+
+actor Tenant
+actor Landlord
+participant "Chat Screen" as App
+participant "ContractRepository" as ContractRepo
+participant "MessageRepository" as MsgRepo
+participant "RentalRepository" as RentalRepo
+participant "Firestore" as DB
+
+Tenant -> App: Request contract
+activate App
+
+App -> ContractRepo: createContractFromListingTemplate()
+activate ContractRepo
+ContractRepo -> DB: Get listing with template
+DB --> ContractRepo: Listing + template fields
+
+ContractRepo -> DB: Create contract document (status=pending)
+DB --> ContractRepo: contractId
+deactivate ContractRepo
+
+App -> MsgRepo: Send contract message
+activate MsgRepo
+MsgRepo -> DB: Add message type='contract' with contractId
+DB --> MsgRepo: success
+deactivate MsgRepo
+
+App --> Tenant: Show contract in chat
+deactivate App
+
+== Landlord reviews ==
+Landlord -> App: View contract
+activate App
+App --> Landlord: Display contract details
+deactivate App
+
+== Tenant signs ==
+Tenant -> App: Sign contract
+activate App
+
+App -> ContractRepo: signContract(contractId, tenantSignature)
+activate ContractRepo
+ContractRepo -> DB: Update contract (status=signed)
+DB --> ContractRepo: success
+
+ContractRepo -> DB: Create tenancy document (status=signed)
+DB --> ContractRepo: tenancyId
+deactivate ContractRepo
+
+App -> RentalRepo: createRentalFromContract(contractId)
+activate RentalRepo
+RentalRepo -> DB: Create rental document (status=active)
+DB --> RentalRepo: rentalId
+deactivate RentalRepo
+
+App --> Tenant: Show confirmation
+deactivate App
+
+@enduml

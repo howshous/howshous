@@ -1,0 +1,107 @@
+@startuml Use Case Diagram
+!theme plain
+skinparam actorBackgroundColor #FFF3E0
+skinparam usecaseBackgroundColor #E1F5FE
+skinparam usecase {
+    BorderColor #0277BD
+}
+
+package "HowsHous System" {
+    ' Use cases
+    usecase (Search Listings) as UC1
+    usecase (View Listing Details) as UC2
+    usecase (Save Listing) as UC3
+    usecase (Initiate Chat) as UC4
+    usecase (Message Landlord) as UC5
+    usecase (View Contract) as UC6
+    usecase (Sign Contract) as UC7
+    usecase (Track Rental) as UC8
+    usecase (Report Issue) as UC9
+    usecase (View AI Helper) as UC10
+    
+    usecase (Create Listing) as UC11
+    usecase (Edit Listing) as UC12
+    usecase (Delete Listing) as UC13
+    usecase (View Listing Stats) as UC14
+    usecase (Chat with Tenant) as UC15
+    usecase (Approve Contract) as UC16
+    usecase (View Tenants) as UC17
+    usecase (Access Analytics) as UC18
+    usecase (AI Analytics Chat) as UC19
+    
+    usecase (Review Listings) as UC20
+    usecase (Manage Listings) as UC21
+    usecase (Manage Users) as UC22
+    usecase (Ban User) as UC23
+    usecase (Review Appeals) as UC24
+    usecase (View Reports) as UC25
+}
+
+actor Tenant
+actor Landlord
+actor Administrator
+
+' Tenant relationships
+Tenant --> UC1 : searches
+Tenant --> UC2 : views
+Tenant --> UC3 : saves
+Tenant --> UC4 : initiates
+Tenant --> UC5 : sends
+Tenant --> UC6 : views
+Tenant --> UC7 : signs
+Tenant --> UC8 : tracks
+Tenant --> UC9 : reports
+Tenant --> UC10 : uses
+
+' Landlord relationships
+Landlord --> UC11 : creates
+Landlord --> UC12 : edits
+Landlord --> UC13 : deletes
+Landlord --> UC14 : views
+Landlord --> UC15 : responds to
+Landlord --> UC16 : approves
+Landlord --> UC17 : views
+Landlord --> UC18 : accesses
+Landlord --> UC19 : uses
+
+' Admin relationships
+Administrator --> UC20 : reviews
+Administrator --> UC21 : manages
+Administrator --> UC22 : manages
+Administrator --> UC23 : enforces
+Administrator --> UC24 : reviews
+Administrator --> UC25 : views
+
+' Dependencies
+UC1 .> UC2 : include
+UC4 .> UC5 : include
+UC6 .> UC7 : include
+UC11 .> UC12 : include
+UC11 .> UC13 : include
+
+note right of Tenant
+  Primary flows:
+  1. Search and discover listings
+  2. Chat with landlords
+  3. Sign contracts
+  4. Manage rental
+end note
+
+note right of Landlord
+  Primary flows:
+  1. Create and manage listings
+  2. Respond to inquiries
+  3. Approve contracts
+  4. Monitor tenants
+  5. View analytics
+end note
+
+note right of Administrator
+  Primary flows:
+  1. Moderate content
+  2. Manage users
+  3. Handle disputes
+  4. Enforce policies
+end note
+
+@enduml

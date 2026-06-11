@@ -1,0 +1,65 @@
+@startuml Sequence - Tenant Search & Save Listing
+!theme plain
+
+actor Tenant
+participant "Mobile App" as App
+participant "AnalyticsRepository" as Analytics
+participant "ListingRepository" as ListRepo
+participant "SavedListingsRepository" as SaveRepo
+participant "Firestore" as DB
+
+Tenant -> App: Open search screen
+activate App
+
+Tenant -> App: Enter search filters
+
+App -> Analytics: logSearchFilters()
+activate Analytics
+Analytics -> DB: Write to events collection
+DB --> Analytics: success
+deactivate Analytics
+
+App -> ListRepo: searchListings(filters)
+activate ListRepo
+ListRepo -> DB: Query listings (active, filtered)
+DB --> ListRepo: Return matching listings
+deactivate ListRepo
+ListRepo --> App: List<Listing>
+
+App --> Tenant: Display search results
+
+Tenant -> App: View listing details
+activate App
+
+App -> Analytics: logListingView()
+activate Analytics
+Analytics -> DB: Write LISTING_VIEW event
+DB --> Analytics: success
+deactivate Analytics
+
+App -> ListRepo: Get listing details
+activate ListRepo
+ListRepo -> DB: Get full listing document
+DB --> ListRepo: Listing object
+deactivate ListRepo
+App --> Tenant: Show detail screen
+
+Tenant -> App: Save listing
+activate App
+
+App -> SaveRepo: saveListing(userId, listingId)
+activate SaveRepo
+SaveRepo -> DB: Write to users/{uid}/saved_listings/{listingId}
+DB --> SaveRepo: success
+deactivate SaveRepo
+
+App -> Analytics: logListingSave()
+activate Analytics
+Analytics -> DB: Write LISTING_SAVE event
+DB --> Analytics: success
+deactivate Analytics
+
+App --> Tenant: Show saved confirmation
+deactivate App
+
+@enduml

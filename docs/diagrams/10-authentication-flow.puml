@@ -1,0 +1,106 @@
+@startuml Authentication Flow
+!theme plain
+
+actor User
+participant "Login Screen" as LoginApp
+participant "AuthRepository" as AuthRepo
+participant "FirebaseAuth" as FBAuth
+participant "Firestore" as DB
+participant "DataStore" as LocalStore
+participant "Splash Screen" as Splash
+
+=== Sign Up Flow ===
+
+User -> LoginApp: Choose sign up
+activate LoginApp
+
+User -> LoginApp: Enter credentials & role
+
+LoginApp -> AuthRepo: signUpWithEmail(user, password)
+activate AuthRepo
+
+AuthRepo -> FBAuth: createUserWithEmailAndPassword()
+activate FBAuth
+FBAuth --> AuthRepo: FirebaseUser
+deactivate FBAuth
+
+AuthRepo -> AuthRepo: setDisplayName(firstName + lastName)
+
+AuthRepo -> DB: Set user profile document
+activate DB
+DB --> AuthRepo: success
+deactivate DB
+
+AuthRepo -> LocalStore: saveRole(role)
+activate LocalStore
+LocalStore --> AuthRepo: success
+deactivate LocalStore
+
+AuthRepo -> LocalStore: saveUid(uid)
+LocalStore --> AuthRepo: success
+
+AuthRepo --> LoginApp: Result.success(uid)
+deactivate AuthRepo
+
+LoginApp --> User: Navigate to dashboard
+deactivate LoginApp
+
+=== Sign In Flow ===
+
+User -> LoginApp: Choose sign in
+activate LoginApp
+
+User -> LoginApp: Enter email & password
+
+LoginApp -> AuthRepo: signInWithEmail(email, password)
+activate AuthRepo
+
+AuthRepo -> FBAuth: signInWithEmailAndPassword()
+activate FBAuth
+FBAuth --> AuthRepo: FirebaseUser
+deactivate FBAuth
+
+AuthRepo -> DB: Get user profile
+activate DB
+DB --> AuthRepo: UserProfile with role & isBanned
+deactivate DB
+
+alt User is banned
+    AuthRepo -> LocalStore: saveRole("banned")
+    AuthRepo --> LoginApp: Result.success(uid)
+    LoginApp --> User: Navigate to banned screen
+else User is active
+    AuthRepo -> LocalStore: saveRole(role)
+    AuthRepo -> LocalStore: saveUid(uid)
+    AuthRepo --> LoginApp: Result.success(uid)
+    LoginApp --> User: Navigate to dashboard
+end
+
+deactivate AuthRepo
+deactivate LoginApp
+
+=== Auto-Login (Splash Screen) ===
+
+Splash -> FBAuth: Check currentUser
+activate FBAuth
+
+alt User exists in Firebase
+    FBAuth --> Splash: FirebaseUser
+    
+    Splash -> DB: Get user profile
+    activate DB
+    DB --> Splash: UserProfile
+    deactivate DB
+    
+    Splash -> LocalStore: saveRole(role)
+    Splash -> LocalStore: saveUid(uid)
+    Splash --> User: Navigate to dashboard
+else No user
+    FBAuth --> Splash: null
+    Splash -> LocalStore: clearSession()
+    Splash --> User: Navigate to login_choice
+end
+
+deactivate FBAuth
+
+@enduml

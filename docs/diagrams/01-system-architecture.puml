@@ -1,84 +1,92 @@
-@startuml System Architecture Diagram
-!define TITLE System Architecture - Smart Boarding House Solution
-title TITLE
-
-skinparam backgroundColor #FEFEFE
-skinparam package {
-    BackgroundColor #E8F4F8
-    BorderColor #0066CC
-}
-skinparam component {
-    BackgroundColor #FFE8CC
-    BorderColor #FF6600
-}
+@startuml System Architecture
+!theme plain
+skinparam linetype ortho
 skinparam rectangle {
-    BackgroundColor #E8E8E8
-    BorderColor #333333
+    BackgroundColor #E1F5FE
+    BorderColor #0277BD
+    FontColor #01579B
+}
+skinparam cloud {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
 }
 
-package "Client Layer" {
-    component [Mobile App\n(Android/iOS)] as MobileApp
-    component [Web Dashboard] as WebDash
-    component [Landlord Portal] as LandlordPortal
+package "Mobile Client Layer" {
+    rectangle "Android App\n(Kotlin + Jetpack Compose)" as AndroidApp
 }
 
-package "API Gateway & Services" {
-    component [API Gateway] as APIGateway
-    component [Authentication Service] as AuthService
-    component [User Service] as UserService
-    component [Booking Service] as BookingService
-    component [Payment Service] as PaymentService
-    component [Room Management] as RoomService
+package "Authentication" {
+    rectangle "Firebase Auth" as FirebaseAuth
 }
 
-package "Business Logic Layer" {
-    component [Reservation Engine] as ResEngine
-    component [Billing Engine] as BillingEngine
-    component [Notification Manager] as NotifManager
-    component [Analytics Engine] as AnalyticsEngine
+package "Backend & Business Logic" {
+    rectangle "ViewModels\n(MVVM Pattern)" as ViewModels
+    rectangle "Repositories\n(Data Access)" as Repositories
 }
 
-package "Data Layer" {
-    component [Relational DB\n(PostgreSQL/MySQL)] as RelDB
-    component [Cache Layer\n(Redis)] as Cache
-    component [File Storage] as Storage
+package "Data & Storage" {
+    rectangle "Firestore Database" as Firestore
+    rectangle "Collections:\n- users\n- listings\n- chats\n- messages\n- contracts\n- tenancies\n- rentals\n- issues\n- notifications\n- reviews\n- ban_appeals\n- events\n- listing_daily_stats\n- aiChats\n- saved_listings\n- verifications" as FirestoreCollections
+    rectangle "Firebase Storage\n(Listing photos, IDs,\nPermits, Profiles)" as Storage
 }
 
-package "External Services" {
-    component [Payment Gateway\n(Stripe/PayPal)] as PaymentGW
-    component [Email Service\n(SendGrid)] as EmailService
-    component [SMS Service\n(Twilio)] as SMSService
-    component [Maps & Location] as MapsService
+package "Backend Services" {
+    rectangle "Cloud Functions\n(TypeScript/Node.js)" as CloudFunctions
 }
 
-MobileApp --> APIGateway
-WebDash --> APIGateway
-LandlordPortal --> APIGateway
+package "External AI Services" {
+    cloud "AI Models" as AIModels {
+        rectangle "• Gemini API\n• OpenAI API\n• Groq API" as AIServices
+    }
+}
 
-APIGateway --> AuthService
-APIGateway --> UserService
-APIGateway --> BookingService
-APIGateway --> PaymentService
-APIGateway --> RoomService
+package "Local Device Storage" {
+    rectangle "DataStore Preferences\n(Session, Role, UID)" as DataStore
+}
 
-BookingService --> ResEngine
-PaymentService --> BillingEngine
-UserService --> NotifManager
+' Connections
+AndroidApp --> FirebaseAuth : authenticate
+AndroidApp --> ViewModels : display data
+ViewModels --> Repositories : request data
+Repositories --> Firestore : CRUD operations
+Repositories --> Storage : upload/download files
+AndroidApp --> DataStore : persist local state
+AndroidApp --> AIModels : query AI models
+FirebaseAuth --> Firestore : user management
+CloudFunctions --> Firestore : aggregate/sync data
+CloudFunctions --> Storage : file operations
 
-ResEngine --> RelDB
-BillingEngine --> RelDB
-UserService --> RelDB
-RoomService --> RelDB
+note right of AndroidApp
+  User Roles:
+  • Tenant
+  • Landlord
+  • Administrator
+  • Banned
+end note
 
-APIGateway --> Cache
-BookingService --> Cache
+note right of ViewModels
+  ViewModels:
+  • HomeViewModel
+  • ListingViewModel
+  • ChatViewModel
+  • AccountViewModel
+  • LandlordAnalyticsAIViewModel
+  • SignupViewModel
+end note
 
-UserService --> EmailService
-NotifManager --> EmailService
-NotifManager --> SMSService
-
-PaymentService --> PaymentGW
-RoomService --> MapsService
-RoomService --> Storage
+note right of Repositories
+  Key Repositories:
+  • UserRepository
+  • ListingRepository
+  • ChatRepository
+  • MessageRepository
+  • ContractRepository
+  • AIChatRepository
+  • AnalyticsRepository
+  • ListingMetricsRepository
+  • SavedListingsRepository
+  • IssueRepository
+  • BanAppealRepository
+end note
 
 @enduml

@@ -1,0 +1,62 @@
+@startuml Sequence - Tenant-Landlord Messaging
+!theme plain
+
+actor Tenant
+actor Landlord
+participant "Chat Screen" as App
+participant "ChatRepository" as ChatRepo
+participant "MessageRepository" as MsgRepo
+participant "AnalyticsRepository" as Analytics
+participant "Firestore" as DB
+
+Tenant -> App: Initiate chat
+activate App
+
+App -> ChatRepo: getOrCreateChat(listingId, tenantId, landlordId)
+activate ChatRepo
+ChatRepo -> DB: Query chats collection
+DB --> ChatRepo: Existing chat or null
+
+alt Chat exists
+    ChatRepo --> ChatRepo: Return existing chatId
+else Chat doesn't exist
+    ChatRepo -> DB: Create new chat document
+    DB --> ChatRepo: Return new chatId
+end
+deactivate ChatRepo
+
+Tenant -> App: Type message
+activate App
+
+Tenant -> App: Send message
+
+App -> MsgRepo: saveMessage(chatId, text, senderId)
+activate MsgRepo
+MsgRepo -> DB: Add document to messages subcollection
+DB --> MsgRepo: success
+deactivate MsgRepo
+
+App -> Analytics: logListingMessage()
+activate Analytics
+Analytics -> DB: Write LISTING_MESSAGE event
+DB --> Analytics: success
+deactivate Analytics
+
+App --> Tenant: Show message in chat
+deactivate App
+
+== Real-time update ==
+
+Landlord -> App: Chat screen open
+activate App
+
+App -> MsgRepo: subscribeToMessages(chatId)
+activate MsgRepo
+MsgRepo -> DB: Attach listener
+DB --> App: Emit message updates
+deactivate MsgRepo
+
+App --> Landlord: Display new message from Tenant
+deactivate App
+
+@enduml

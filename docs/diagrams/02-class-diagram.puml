@@ -1,0 +1,210 @@
+@startuml Class Diagram - Data Models
+!theme plain
+skinparam classBackgroundColor #E1F5FE
+skinparam classBorderColor #0277BD
+skinparam classArrowColor #0277BD
+
+class UserProfile {
+    uid: String
+    firstName: String
+    lastName: String
+    email: String
+    phone: String
+    role: String (tenant|landlord|administrator|banned)
+    gender: String
+    isBanned: Boolean
+    originalRole: String
+    bannedAt: Timestamp
+    bannedBy: String
+    banReason: String
+    verified: Boolean
+    profileImageUrl: String
+    businessPermitUrl: String
+    createdAt: Timestamp
+}
+
+class Listing {
+    id: String (UUID)
+    landlordId: String
+    title: String
+    description: String
+    location: String
+    price: Int
+    deposit: Int
+    capacity: Int
+    currentOccupancy: Int
+    hasAvailableSlots: Boolean
+    genderPolicy: String (any|female|male)
+    status: String (under_review|rejected|active|inactive|delisted)
+    previousStatus: String
+    reviewedAt: Timestamp
+    reviewedBy: String
+    reviewNotes: String
+    photos: List<String>
+    amenities: List<String>
+    landDeedUrl: String
+    reviewSummary: ListingReviewSummary
+    contractTemplate: Map<String, Any>
+    uniqueViewCount: Int
+    isSample: Boolean
+    createdAt: Timestamp
+    updatedAt: Timestamp
+}
+
+class ListingReview {
+    id: String
+    listingId: String
+    reviewerId: String
+    recommended: Boolean
+    comment: String
+    createdAt: Timestamp
+}
+
+class ListingReviewSummary {
+    total: Int
+    recommendedCount: Int
+    notRecommendedCount: Int
+    updatedAt: Timestamp
+}
+
+class Chat {
+    id: String (UUID)
+    listingId: String
+    tenantId: String
+    landlordId: String
+    lastMessage: String
+    lastTimestamp: Timestamp
+}
+
+class Message {
+    id: String
+    chatId: String
+    senderId: String
+    text: String
+    timestamp: Timestamp
+    type: String (text|contract|image)
+    contractId: String
+    imageUrl: String
+}
+
+class Contract {
+    id: String
+    chatId: String
+    listingId: String
+    landlordId: String
+    tenantId: String
+    title: String
+    terms: String
+    monthlyRent: Int
+    deposit: Int
+    startDate: Timestamp
+    endDate: Timestamp
+    status: String (pending|signed|rejected|terminated)
+    signedAt: Timestamp
+    createdAt: Timestamp
+}
+
+class Rental {
+    id: String (UUID)
+    listingId: String
+    tenantId: String
+    landlordId: String
+    contractId: String
+    startDate: Timestamp
+    nextDueDate: Timestamp
+    status: String (active|ended)
+    monthlyRent: Int
+}
+
+class Tenancy {
+    id: String
+    listingId: String
+    tenantId: String
+    tenantName: String
+    landlordId: String
+    contractId: String
+    status: String (signed|confirmed|needs_resign|ended)
+    createdAt: Timestamp
+    updatedAt: Timestamp
+}
+
+class Issue {
+    id: String
+    listingId: String
+    tenantId: String
+    landlordId: String
+    title: String
+    description: String
+    status: String (pending|resolved)
+    photoUrl: String
+    resolutionPhotoUrl: String
+    reportedAt: Timestamp
+    resolvedAt: Timestamp
+}
+
+class Notification {
+    id: String
+    userId: String
+    type: String (payment_due|message|system|inquiry)
+    title: String
+    message: String
+    read: Boolean
+    notified: Boolean
+    notifiedAt: Timestamp
+    timestamp: Timestamp
+    actionUrl: String
+    listingId: String
+    senderId: String
+}
+
+class BanAppeal {
+    id: String
+    userId: String
+    message: String
+    status: String (pending|approved|rejected)
+    createdAt: Timestamp
+    reviewedAt: Timestamp
+    reviewedBy: String
+    reviewNotes: String
+}
+
+class AIChatMessage {
+    id: String
+    userId: String
+    text: String
+    isTenant: Boolean (true=user, false=AI)
+    timestamp: Timestamp
+}
+
+class ListingMetrics {
+    listingId: String
+    views7d: Int
+    uniqueSessions7d: Int
+    saves7d: Int
+    messages7d: Int
+    views30d: Int
+    uniqueSessions30d: Int
+    saves30d: Int
+    messages30d: Int
+}
+
+' Relationships
+Listing "1" *-- "*" ListingReview : has
+Listing "1" *-- "1" ListingReviewSummary : has
+Listing "1" *-- "*" Message : featured in
+Chat "1" *-- "*" Message : contains
+Chat "1" -- "*" Contract : associated with
+Listing "1" -- "*" Chat : advertised in
+UserProfile "1" -- "*" Listing : owns (landlord)
+UserProfile "1" -- "*" Chat : participates in
+Contract "1" *-- "1" Rental : creates
+Rental "1" -- "1" Tenancy : creates
+Listing "1" -- "*" Tenancy : has
+Listing "1" -- "*" Issue : reported in
+UserProfile "1" -- "*" Issue : reports
+UserProfile "1" -- "*" Notification : receives
+UserProfile "1" -- "*" BanAppeal : submits
+Listing "1" -- "1" ListingMetrics : tracked by
+UserProfile "1" -- "*" AIChatMessage : chats with AI
+
+@enduml

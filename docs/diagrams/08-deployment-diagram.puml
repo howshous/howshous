@@ -1,0 +1,51 @@
+@startuml Deployment Diagram
+!theme plain
+
+node "User Device" as Device {
+    component "Android App\n(Kotlin + Compose)" as AppComp
+    component "DataStore\nPreferences" as DataStore
+}
+
+node "Google Cloud" as GCP {
+    component "Firebase\nAuthentication" as FireAuth
+    
+    component "Cloud Firestore" as Firestore {
+        database "Collections" as DB1 {
+        }
+    }
+    
+    component "Firebase Storage" as FireStorage
+    
+    component "Cloud Functions" as CloudFunc {
+        component "Metrics Aggregation" as MetricsFunc
+        component "User Ban Handler" as BanFunc
+        component "Notification Service" as NotifFunc
+    }
+}
+
+node "AI Services" as AIServices {
+    component "Gemini API" as Gemini
+    component "OpenAI API" as OpenAI
+    component "Groq API" as Groq
+}
+
+AppComp --|> FireAuth : authenticate
+AppComp --|> Firestore : CRUD operations
+AppComp --|> FireStorage : upload/download
+AppComp --> DataStore : persist session
+AppComp --|> AIServices : query AI
+
+CloudFunc --|> Firestore : read/aggregate
+MetricsFunc --|> Firestore : write metrics
+BanFunc --|> Firestore : update users
+NotifFunc --|> Firestore : write notifications
+
+device "External Services" {
+    component "Email Service"
+    component "SMS Service"
+    component "Analytics"
+}
+
+CloudFunc --|> "External Services" : send notifications
+
+@enduml

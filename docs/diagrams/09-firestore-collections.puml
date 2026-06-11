@@ -1,0 +1,212 @@
+@startuml Firestore Collections Schema
+!theme plain
+
+entity "users" {
+    * uid: PK
+    --
+    firstName: String
+    lastName: String
+    email: String
+    phone: String
+    role: String (tenant|landlord|administrator|banned)
+    gender: String
+    isBanned: Boolean
+    bannedAt: Timestamp
+    bannedBy: String
+    banReason: String
+    verified: Boolean
+    profileImageUrl: String
+    businessPermitUrl: String
+    createdAt: Timestamp
+}
+
+entity "listings" {
+    * id: PK
+    --
+    landlordId: FK
+    title: String
+    description: String
+    location: String
+    price: Int
+    deposit: Int
+    capacity: Int
+    currentOccupancy: Int
+    hasAvailableSlots: Boolean
+    genderPolicy: String
+    status: String
+    photos: Array<String>
+    amenities: Array<String>
+    contractTemplate: Map
+    reviewSummary: Map
+    createdAt: Timestamp
+    updatedAt: Timestamp
+}
+
+entity "chats" {
+    * id: PK
+    --
+    listingId: FK
+    tenantId: FK
+    landlordId: FK
+    lastMessage: String
+    lastTimestamp: Timestamp
+    ---
+    + subcollection: messages
+}
+
+entity "messages" {
+    * id: PK (subcollection of chats)
+    --
+    chatId: FK
+    senderId: FK
+    text: String
+    timestamp: Timestamp
+    type: String
+    imageUrl: String
+    contractId: String
+}
+
+entity "contracts" {
+    * id: PK
+    --
+    chatId: FK
+    listingId: FK
+    landlordId: FK
+    tenantId: FK
+    title: String
+    terms: String
+    monthlyRent: Int
+    deposit: Int
+    startDate: Timestamp
+    endDate: Timestamp
+    status: String (pending|signed|rejected|terminated)
+    signedAt: Timestamp
+    createdAt: Timestamp
+}
+
+entity "tenancies" {
+    * id: PK
+    --
+    listingId: FK
+    tenantId: FK
+    landlordId: FK
+    contractId: FK
+    tenantName: String
+    status: String (signed|confirmed|needs_resign|ended)
+    createdAt: Timestamp
+    updatedAt: Timestamp
+}
+
+entity "rentals" {
+    * id: PK
+    --
+    listingId: FK
+    tenantId: FK
+    landlordId: FK
+    contractId: FK
+    startDate: Timestamp
+    nextDueDate: Timestamp
+    status: String (active|ended)
+    monthlyRent: Int
+}
+
+entity "issues" {
+    * id: PK
+    --
+    listingId: FK
+    tenantId: FK
+    landlordId: FK
+    title: String
+    description: String
+    photoUrl: String
+    status: String (pending|resolved)
+    resolutionPhotoUrl: String
+    reportedAt: Timestamp
+    resolvedAt: Timestamp
+}
+
+entity "notifications" {
+    * id: PK
+    --
+    userId: FK
+    type: String
+    title: String
+    message: String
+    read: Boolean
+    notified: Boolean
+    actionUrl: String
+    listingId: String
+    senderId: String
+    timestamp: Timestamp
+}
+
+entity "ban_appeals" {
+    * id: PK
+    --
+    userId: FK
+    message: String
+    status: String (pending|approved|rejected)
+    createdAt: Timestamp
+    reviewedAt: Timestamp
+    reviewedBy: String
+    reviewNotes: String
+}
+
+entity "events" {
+    * id: PK
+    --
+    eventType: String (LISTING_VIEW|LISTING_SAVE|LISTING_MESSAGE|SEARCH_PERFORMED)
+    userId: String
+    sessionId: String
+    timestamp: Timestamp
+    ---
+    payload varies by event type
+}
+
+entity "listing_daily_stats" {
+    * listingId: PK
+    --
+    ---
+    + subcollection: days
+}
+
+entity "days" {
+    * date: PK (YYYY-MM-DD format)
+    --
+    views: Int
+    uniqueSessions: Int
+    saves: Int
+    messages: Int
+}
+
+entity "aiChats" {
+    * userId: PK
+    --
+    ---
+    + subcollection: messages
+}
+
+entity "reviews" {
+    * id: PK (subcollection of listings)
+    --
+    listingId: FK
+    reviewerId: FK
+    recommended: Boolean
+    comment: String
+    createdAt: Timestamp
+}
+
+users ||--o{ listings : owns
+listings ||--o{ chats : featured_in
+listings ||--o{ reviews : reviewed_in
+listings ||--o{ issues : reported_in
+listings ||--o{ listing_daily_stats : tracked_by
+chats ||--o{ messages : contains
+chats ||--o{ contracts : has
+contracts ||--o{ rentals : creates
+rentals ||--o{ tenancies : has
+users ||--o{ notifications : receives
+users ||--o{ ban_appeals : submits
+users ||--o{ aiChats : chats_with_ai
+
+@enduml

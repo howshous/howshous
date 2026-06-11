@@ -1,0 +1,130 @@
+@startuml Package Diagram
+!theme plain
+skinparam packageBackgroundColor #E1F5FE
+skinparam packageBorderColor #0277BD
+
+package "io.github.howshous" {
+    package "data" {
+        package "models" {
+            file "DataModels.kt" as DM
+            file "ReviewModels.kt" as RM
+            file "Analytics.kt" as AM
+        }
+        
+        package "auth" {
+            file "AuthRepository.kt" as AR
+        }
+        
+        package "firestore" {
+            file "UserRepository.kt" as UR
+            file "ListingRepository.kt" as LR
+            file "ChatRepository.kt" as CR
+            file "MessageRepository.kt" as MR
+            file "ContractRepository.kt" as CoR
+            file "AIChatRepository.kt" as ACR
+            file "AnalyticsRepository.kt" as AR2
+            file "ListingMetricsRepository.kt" as LMR
+            file "ListingReviewRepository.kt" as LRR
+            file "SavedListingsRepository.kt" as SLR
+            file "IssueRepository.kt" as IR
+            file "BanAppealRepository.kt" as BAR
+            file "NotificationRepository.kt" as NR
+            file "Repositories.kt" as Repos
+        }
+        
+        package "listing" {
+            file "ListingRepository.kt" as LR2
+        }
+        
+        package "chat" {
+            file "ChatRepository.kt" as CR2
+        }
+        
+        package "rental" {
+            file "RentalRepository.kt" as RR
+        }
+    }
+    
+    package "ui" {
+        package "viewmodels" {
+            file "HomeViewModel.kt" as HVM
+            file "ListingViewModel.kt" as LVM
+            file "ChatViewModel.kt" as CVM
+            file "AccountViewModel.kt" as AVM
+            file "LandlordAnalyticsAIViewModel.kt" as LAAVM
+            file "SignupViewModel.kt" as SVM
+        }
+        
+        package "screens" {
+            package "auth" {
+                file "Login.kt"
+                file "Signup.kt"
+                file "Splash.kt"
+            }
+            
+            package "tenant" {
+                file "SearchScreen.kt"
+                file "ListingDetailScreen.kt"
+                file "ChatDetailScreen.kt"
+                file "TenantAIHelperScreen.kt"
+                file "ViewContractsScreen.kt"
+                file "ReportIssueScreen.kt"
+                file "EmergencyScreen.kt"
+            }
+            
+            package "landlord" {
+                file "LandlordScreens.kt"
+                file "CreateListingScreen.kt"
+                file "EditListingScreen.kt"
+                file "LandlordAnalyticsAIChatScreen.kt"
+            }
+            
+            package "admin" {
+                file "AdminScreens.kt"
+            }
+        }
+        
+        package "components" {
+            file "ListingCard.kt"
+            file "DebouncedIconButton.kt"
+            file "ReviewSummaryRow.kt"
+        }
+    }
+    
+    package "utils" {
+        file "GroqApiClient.kt"
+        file "SampleAccountSeeder.kt"
+        file "SampleListingsGenerator.kt"
+    }
+}
+
+package "Firebase" {
+    file "Firestore" as FS
+    file "Authentication" as FA
+    file "Storage" as FStor
+    file "Cloud Functions" as CF
+}
+
+AR -.-> FA : uses
+UR -.-> FS : reads/writes
+LR -.-> FS : reads/writes
+CR -.-> FS : reads/writes
+MR -.-> FS : reads/writes
+CoR -.-> FS : reads/writes
+AR2 -.-> FS : writes events
+LMR -.-> FS : reads metrics
+ACR -.-> FS : reads/writes AI chats
+SLR -.-> FS : manages saved listings
+IR -.-> FS : reads/writes issues
+BAR -.-> FS : reads/writes appeals
+RR -.-> FS : reads/writes rentals
+
+HVM -.-> LR : uses
+LVM -.-> LR : uses
+CVM -.-> CR : uses
+CVM -.-> MR : uses
+AVM -.-> UR : uses
+LAAVM -.-> ACR : uses
+LAAVM -.-> LMR : uses
+
+@enduml
