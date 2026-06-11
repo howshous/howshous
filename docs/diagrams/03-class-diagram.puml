@@ -1,0 +1,189 @@
+@startuml Class Diagram
+!define TITLE Class Diagram - Smart Boarding House Solution
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+}
+
+class User {
+    -id: UUID
+    -name: String
+    -email: String
+    -phone: String
+    -profilePicture: URL
+    -createdAt: DateTime
+    -updatedAt: DateTime
+    +getProfile(): UserProfile
+    +updateProfile(profile: UserProfile): void
+}
+
+class Tenant {
+    -tenantId: UUID
+    -documents: List<Document>
+    -emergencyContact: Contact
+    +submitMaintenanceRequest(req: MaintenanceRequest): void
+    +reviewProperty(review: Review): void
+}
+
+class Landlord {
+    -landlordId: UUID
+    -businessName: String
+    -bankAccount: BankDetails
+    -verified: Boolean
+    +addProperty(property: Property): void
+    +viewAnalytics(): Analytics
+    +managePayouts(): void
+}
+
+class Admin {
+    -adminId: UUID
+    -role: AdminRole
+    -permissions: Set<Permission>
+    +moderateContent(): void
+    +resolveDispute(dispute: Dispute): void
+    +banUser(user: User): void
+}
+
+class Property {
+    -propertyId: UUID
+    -landlordId: UUID
+    -name: String
+    -address: Address
+    -city: String
+    -coordinates: GeoPoint
+    -description: String
+    -amenities: List<String>
+    -rules: List<String>
+    -createdAt: DateTime
+    +getAvailableRooms(): List<Room>
+    +getBookingHistory(): List<Booking>
+}
+
+class Room {
+    -roomId: UUID
+    -propertyId: UUID
+    -roomNumber: String
+    -type: RoomType
+    -capacity: Integer
+    -price: Decimal
+    -images: List<URL>
+    -amenities: List<String>
+    -availableFrom: Date
+    -availableTo: Date
+    +isAvailable(startDate: Date, endDate: Date): Boolean
+    +getBookings(): List<Booking>
+}
+
+class Booking {
+    -bookingId: UUID
+    -roomId: UUID
+    -tenantId: UUID
+    -checkInDate: Date
+    -checkOutDate: Date
+    -totalPrice: Decimal
+    -status: BookingStatus
+    -createdAt: DateTime
+    -paymentStatus: PaymentStatus
+    +getRoom(): Room
+    +getTenant(): Tenant
+    +getPayment(): Payment
+    +cancel(): void
+}
+
+class Payment {
+    -paymentId: UUID
+    -bookingId: UUID
+    -amount: Decimal
+    -currency: String
+    -paymentMethod: String
+    -status: PaymentStatus
+    -transactionId: String
+    -createdAt: DateTime
+    +processPayment(): Boolean
+    +refund(): Boolean
+}
+
+class MaintenanceRequest {
+    -requestId: UUID
+    -roomId: UUID
+    -tenantId: UUID
+    -description: String
+    -priority: Priority
+    -status: RequestStatus
+    -createdAt: DateTime
+    -resolvedAt: DateTime
+    +assignTo(landlord: Landlord): void
+    +resolve(): void
+}
+
+class Review {
+    -reviewId: UUID
+    -propertyId: UUID
+    -tenantId: UUID
+    -rating: Integer
+    -comment: String
+    -createdAt: DateTime
+    +isVerified(): Boolean
+}
+
+class Document {
+    -documentId: UUID
+    -userId: UUID
+    -documentType: DocumentType
+    -fileURL: URL
+    -uploadedAt: DateTime
+    -expiryDate: Date
+}
+
+class Address {
+    -street: String
+    -city: String
+    -state: String
+    -zipCode: String
+    -country: String
+}
+
+User <|-- Tenant
+User <|-- Landlord
+User <|-- Admin
+
+Property "1" -- "many" Room
+Room "1" -- "many" Booking
+Booking "1" -- "1" Payment
+Booking "1" -- "many" MaintenanceRequest
+Room "1" -- "many" Review
+Tenant "1" -- "many" Booking
+Tenant "1" -- "many" MaintenanceRequest
+Tenant "1" -- "many" Review
+Landlord "1" -- "many" Property
+MaintenanceRequest "many" -- "1" Landlord
+User "1" -- "many" Document
+Property "1" -- "1" Address
+
+enum BookingStatus {
+    PENDING
+    CONFIRMED
+    ACTIVE
+    COMPLETED
+    CANCELLED
+}
+
+enum PaymentStatus {
+    PENDING
+    COMPLETED
+    FAILED
+    REFUNDED
+}
+
+enum RequestStatus {
+    OPEN
+    ASSIGNED
+    IN_PROGRESS
+    RESOLVED
+    CLOSED
+}
+
+@enduml

@@ -1,0 +1,183 @@
+@startuml Package Diagram
+!define TITLE Package Diagram - Smart Boarding House Solution
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam package {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+}
+
+package "howshous-system" {
+    
+    package "presentation" {
+        package "mobile" {
+            [Android App]
+            [iOS App]
+        }
+        package "web" {
+            [Tenant Dashboard]
+            [Landlord Dashboard]
+            [Admin Dashboard]
+        }
+    }
+    
+    package "api" {
+        package "gateway" {
+            [API Gateway]
+            [Auth Gateway]
+        }
+        package "rest" {
+            [Tenant API]
+            [Landlord API]
+            [Admin API]
+            [Public API]
+        }
+    }
+    
+    package "services" {
+        package "core" {
+            [User Service]
+            [Room Service]
+            [Booking Service]
+            [Property Service]
+        }
+        package "payment" {
+            [Payment Service]
+            [Billing Service]
+            [Invoice Service]
+        }
+        package "communication" {
+            [Email Service]
+            [SMS Service]
+            [Notification Service]
+        }
+        package "support" {
+            [Maintenance Service]
+            [Review Service]
+            [Dispute Service]
+        }
+        package "analytics" {
+            [Analytics Engine]
+            [Reporting Service]
+        }
+    }
+    
+    package "domain" {
+        package "models" {
+            [User Model]
+            [Property Model]
+            [Booking Model]
+            [Payment Model]
+            [Maintenance Model]
+        }
+        package "entities" {
+            [User Entity]
+            [Property Entity]
+            [Room Entity]
+            [Booking Entity]
+        }
+        package "value-objects" {
+            [Address]
+            [Coordinates]
+            [Money]
+            [PhoneNumber]
+        }
+    }
+    
+    package "repository" {
+        [User Repository]
+        [Property Repository]
+        [Booking Repository]
+        [Payment Repository]
+        [Room Repository]
+    }
+    
+    package "infrastructure" {
+        package "database" {
+            [PostgreSQL Driver]
+            [ORM (Hibernate/Room)]
+            [Migration Scripts]
+        }
+        package "cache" {
+            [Redis Cache]
+            [Cache Manager]
+        }
+        package "storage" {
+            [Cloud Storage (AWS S3)]
+            [File Manager]
+        }
+        package "security" {
+            [JWT Handler]
+            [OAuth Provider]
+            [Encryption Service]
+        }
+    }
+    
+    package "external" {
+        [Payment Gateway Integration]
+        [Email Provider Integration]
+        [SMS Provider Integration]
+        [Maps API Integration]
+    }
+    
+    package "shared" {
+        package "utils" {
+            [Logger]
+            [Exception Handler]
+            [Validator]
+        }
+        package "constants" {
+            [App Constants]
+            [Error Codes]
+        }
+        package "middleware" {
+            [Auth Middleware]
+            [Logging Middleware]
+            [Error Middleware]
+        }
+    }
+}
+
+[Android App] --> [API Gateway]
+[iOS App] --> [API Gateway]
+[Tenant Dashboard] --> [API Gateway]
+[Landlord Dashboard] --> [API Gateway]
+[Admin Dashboard] --> [API Gateway]
+
+[API Gateway] --> [Tenant API]
+[API Gateway] --> [Landlord API]
+[API Gateway] --> [Admin API]
+
+[Tenant API] --> [User Service]
+[Tenant API] --> [Room Service]
+[Tenant API] --> [Booking Service]
+
+[Landlord API] --> [Property Service]
+[Landlord API] --> [Booking Service]
+[Landlord API] --> [Payment Service]
+
+[Admin API] --> [User Service]
+[Admin API] --> [Dispute Service]
+
+[User Service] --> [User Repository]
+[Room Service] --> [Room Repository]
+[Booking Service] --> [Booking Repository]
+[Property Service] --> [Property Repository]
+[Payment Service] --> [Payment Repository]
+
+[User Repository] --> [PostgreSQL Driver]
+[Room Repository] --> [PostgreSQL Driver]
+[Booking Repository] --> [PostgreSQL Driver]
+[Property Repository] --> [PostgreSQL Driver]
+[Payment Repository] --> [PostgreSQL Driver]
+
+[Booking Service] --> [Redis Cache]
+[Room Service] --> [Redis Cache]
+
+[Payment Service] --> [Payment Gateway Integration]
+[Email Service] --> [Email Provider Integration]
+[SMS Service] --> [SMS Provider Integration]
+[Property Service] --> [Maps API Integration]
+
+@enduml

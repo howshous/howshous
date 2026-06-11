@@ -1,0 +1,61 @@
+@startuml Actor Scenarios
+!define TITLE User Journeys & Actor Scenarios
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam actorBackgroundColor #E8F4F8
+skinparam sequence {
+    ArrowColor #0066CC
+}
+
+== TENANT JOURNEY ==
+
+actor Tenant as T
+
+T -> T: 1. Download App
+T -> T: 2. Sign Up / Login
+T -> T: 3. Enable Location Services
+T -> T: 4. Search Rooms\n(by city, date, budget)
+T -> T: 5. View Room Details\n(photos, amenities, reviews)
+T -> T: 6. Select Dates\n& confirm booking
+T -> T: 7. Make Payment
+T -> T: 8. Receive Confirmation Email
+T -> T: 9. Check-in on Booking Date
+T -> T: 10. Submit Maintenance\n(if needed)
+T -> T: 11. Rate & Review Property
+T -> T: 12. Check-out & Settle
+T -> T: 13. View Invoice & History
+
+== LANDLORD JOURNEY ==
+
+actor Landlord as L
+
+L -> L: 1. Sign Up as Landlord
+L -> L: 2. Complete KYC/Verification
+L -> L: 3. Add Property Details
+L -> L: 4. Add Rooms\n(photos, amenities, rules)
+L -> L: 5. Set Pricing & Availability
+L -> L: 6. Receive Booking Notifications
+L -> L: 7. Manage Bookings\n& Tenants
+L -> L: 8. Respond to Maintenance\nRequests
+L -> L: 9. View Tenant Reviews
+L -> L: 10. Track Revenue\n& Payments
+L -> L: 11. Download Invoices
+L -> L: 12. View Analytics\n(occupancy, ratings)
+
+== ADMIN JOURNEY ==
+
+actor Admin as A
+
+A -> A: 1. Login to Admin Dashboard
+A -> A: 2. Manage Users\n(tenants, landlords)
+A -> A: 3. Moderate Content\n(reviews, listings)
+A -> A: 4. Resolve Disputes
+A -> A: 5. Handle Complaints
+A -> A: 6. Suspend/Ban Users
+A -> A: 7. Monitor System Health
+A -> A: 8. View System Analytics
+A -> A: 9. Generate Reports
+A -> A: 10. Manage Support Tickets
+
+@enduml

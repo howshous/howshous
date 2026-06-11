@@ -1,0 +1,84 @@
+@startuml System Architecture Diagram
+!define TITLE System Architecture - Smart Boarding House Solution
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam package {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+}
+skinparam component {
+    BackgroundColor #FFE8CC
+    BorderColor #FF6600
+}
+skinparam rectangle {
+    BackgroundColor #E8E8E8
+    BorderColor #333333
+}
+
+package "Client Layer" {
+    component [Mobile App\n(Android/iOS)] as MobileApp
+    component [Web Dashboard] as WebDash
+    component [Landlord Portal] as LandlordPortal
+}
+
+package "API Gateway & Services" {
+    component [API Gateway] as APIGateway
+    component [Authentication Service] as AuthService
+    component [User Service] as UserService
+    component [Booking Service] as BookingService
+    component [Payment Service] as PaymentService
+    component [Room Management] as RoomService
+}
+
+package "Business Logic Layer" {
+    component [Reservation Engine] as ResEngine
+    component [Billing Engine] as BillingEngine
+    component [Notification Manager] as NotifManager
+    component [Analytics Engine] as AnalyticsEngine
+}
+
+package "Data Layer" {
+    component [Relational DB\n(PostgreSQL/MySQL)] as RelDB
+    component [Cache Layer\n(Redis)] as Cache
+    component [File Storage] as Storage
+}
+
+package "External Services" {
+    component [Payment Gateway\n(Stripe/PayPal)] as PaymentGW
+    component [Email Service\n(SendGrid)] as EmailService
+    component [SMS Service\n(Twilio)] as SMSService
+    component [Maps & Location] as MapsService
+}
+
+MobileApp --> APIGateway
+WebDash --> APIGateway
+LandlordPortal --> APIGateway
+
+APIGateway --> AuthService
+APIGateway --> UserService
+APIGateway --> BookingService
+APIGateway --> PaymentService
+APIGateway --> RoomService
+
+BookingService --> ResEngine
+PaymentService --> BillingEngine
+UserService --> NotifManager
+
+ResEngine --> RelDB
+BillingEngine --> RelDB
+UserService --> RelDB
+RoomService --> RelDB
+
+APIGateway --> Cache
+BookingService --> Cache
+
+UserService --> EmailService
+NotifManager --> EmailService
+NotifManager --> SMSService
+
+PaymentService --> PaymentGW
+RoomService --> MapsService
+RoomService --> Storage
+
+@enduml

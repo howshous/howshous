@@ -1,0 +1,69 @@
+@startuml State Diagram - Booking Lifecycle
+!define TITLE State Diagram - Booking Lifecycle
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam state {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+}
+
+[*] --> Created: User initiates booking
+
+Created --> Pending: Booking created
+Pending --> PaymentPending: Awaiting payment
+
+PaymentPending --> Confirmed: Payment successful
+PaymentPending --> Cancelled: Payment failed\nor user cancelled
+
+Confirmed --> Active: Check-in date reached
+
+Active --> Completed: Check-out completed
+
+Completed --> [*]
+
+Pending --> Cancelled: User cancels
+
+Cancelled --> [*]
+
+Active --> Cancelled: Emergency cancellation\n(by landlord/admin)
+
+note right of Created
+    Room selected, dates confirmed
+    Total price calculated
+end note
+
+note right of Pending
+    Booking record created
+    Waiting for payment
+end note
+
+note right of PaymentPending
+    Payment initiated
+    Processing gateway
+end note
+
+note right of Confirmed
+    Payment received
+    Confirmation sent
+    Room reserved
+end note
+
+note right of Active
+    Tenant checked in
+    Booking period started
+end note
+
+note right of Completed
+    Check-out completed
+    Final cleanup verified
+    Payment settled
+end note
+
+note right of Cancelled
+    Booking cancelled
+    Refund processed (if applicable)
+    Room made available
+end note
+
+@enduml

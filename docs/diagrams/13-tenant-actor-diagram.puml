@@ -1,0 +1,117 @@
+@startuml Tenant Actor Diagram
+!define TITLE Tenant User Profile & Interactions
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+
+package "TENANT PROFILE" #E8F4F8 {
+    actor "Tenant\n(Renter)" as Tenant
+    
+    note right of Tenant
+        **Tenant Characteristics:**
+        - Seeks temporary housing
+        - Limited tenure (weekly/monthly)
+        - Budget-conscious
+        - Values convenience
+        - Needs flexible booking
+    end note
+}
+
+package "TENANT ACTIVITIES" #FFE8E8 {
+    
+    usecase "UC1: Room Search\n& Discovery" as UC1
+    note right of UC1
+        - Location-based search
+        - Date range selection
+        - Budget filtering
+        - Amenity filters
+    end note
+    
+    usecase "UC2: View Property\nDetails" as UC2
+    note right of UC2
+        - High-quality images
+        - 360° virtual tour
+        - Room specifications
+        - House rules
+        - Previous reviews
+    end note
+    
+    usecase "UC3: Book Room\n& Make Payment" as UC3
+    note right of UC3
+        - Instant confirmation
+        - Multiple payment options
+        - Secure payment gateway
+        - Receipt generation
+    end note
+    
+    usecase "UC4: Manage\nBooking" as UC4
+    note right of UC4
+        - View booking details
+        - Check-in instructions
+        - Modify dates (if allowed)
+        - Cancel booking
+        - Refund tracking
+    end note
+    
+    usecase "UC5: Submit\nMaintenance Request" as UC5
+    note right of UC5
+        - Describe issues
+        - Attach photos
+        - Priority selection
+        - Track resolution status
+    end note
+    
+    usecase "UC6: Rate & Review\nProperty" as UC6
+    note right of UC6
+        - Star rating
+        - Text review
+        - Photo upload
+        - Verified badge
+    end note
+    
+    usecase "UC7: Communicate\nwith Landlord" as UC7
+    note right of UC7
+        - In-app messaging
+        - Quick responses
+        - Support chatbot
+        - FAQ access
+    end note
+    
+    usecase "UC8: View History\n& Analytics" as UC8
+    note right of UC8
+        - Booking history
+        - Payment history
+        - Total spent
+        - Saved properties
+        - Wishlist
+    end note
+    
+    usecase "UC9: Manage Profile\n& Documents" as UC9
+    note right of UC9
+        - Profile information
+        - Identification documents
+        - Emergency contacts
+        - Payment methods
+        - Preferences
+    end note
+}
+
+Tenant --> UC1
+Tenant --> UC2
+Tenant --> UC3
+Tenant --> UC4
+Tenant --> UC5
+Tenant --> UC6
+Tenant --> UC7
+Tenant --> UC8
+Tenant --> UC9
+
+UC1 ..> UC2 : leads to
+UC2 ..> UC3 : leads to
+UC3 ..> UC4 : leads to
+UC4 ..> UC5 : during stay
+UC4 ..> UC6 : after checkout
+UC4 ..> UC7 : as needed
+UC9 ..> UC3 : supports
+
+@enduml

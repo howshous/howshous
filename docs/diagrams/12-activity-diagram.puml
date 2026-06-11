@@ -1,0 +1,125 @@
+@startuml Activity Diagram - Complete Booking Flow
+!define TITLE Activity Diagram - Complete Booking to Check-out Flow
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+
+start
+
+:User Opens App;
+
+:Search Available Rooms\n  (city, dates, budget);
+
+if (Results Found?) then (Yes)
+    :Display Room List;
+    :User Selects Room;
+    :View Detailed Information\n      (photos, reviews, amenities);
+else (No)
+    :Show No Results;
+    :Suggest Alternatives;
+    stop
+endif
+
+:Select Check-in & Check-out Dates;
+:Review Total Price;
+
+if (Accept Price?) then (No)
+    :Go Back to Search;
+    start
+else (Yes)
+    :Proceed to Booking;
+endif
+
+:Enter Booking Details;
+:Add Special Requests (if any);
+:Review Terms & Conditions;
+
+if (Agree to T&C?) then (No)
+    :Cancel Booking;
+    stop
+else (Yes)
+    :Initiate Payment;
+endif
+
+:Display Payment Options\n  (Card, UPI, Net Banking);
+
+:User Selects Payment Method;
+:Enter Payment Details;
+:Submit Payment Request;
+
+if (Payment Successful?) then (Yes)
+    :Create Booking Record (CONFIRMED);
+    :Send Confirmation Email;
+    :Show Booking Details & QR Code;
+else (No)
+    :Display Error Message;
+    
+    if (Retry Payment?) then (Yes)
+        :Initiate Payment;
+    else (No)
+        :Cancel Booking;
+        stop
+    endif
+endif
+
+:User Receives Booking Number;
+:Show Check-in Instructions;
+
+note right
+    Booking confirmed
+    User can now prepare
+end note
+
+:Waiting Period (Until Check-in Date);
+
+:Check-in Day;
+:User Arrives at Property;
+:Landlord/Manager Inspects Property;
+
+if (Property Condition OK?) then (Yes)
+    :Confirm Check-in;
+    :Booking Status = ACTIVE;
+    :Send Check-in Confirmation;
+else (No)
+    :Raise Discrepancy Issue;
+    :Dispute Resolution Process;
+endif
+
+:User Stays in Room\n  (Check-in to Check-out);
+
+note right
+    If maintenance needed:
+    - Submit maintenance request
+    - Landlord responds
+    - Issue resolved
+end note
+
+:Check-out Date Reached;
+:User Checkout;
+:Landlord Inspects Property;
+
+if (Final Inspection OK?) then (Yes)
+    :Confirm Check-out;
+    :Booking Status = COMPLETED;
+    :Process Final Settlement;
+else (No)
+    :Deduct Damage Charges;
+    :Process Settlement;
+endif
+
+:Send Final Invoice & Itemization;
+:Prompt for Review & Rating;
+
+if (User Reviews?) then (Yes)
+    :Submit Rating & Comment;
+    :Publish Review;
+else (No)
+    :Skip Review;
+endif
+
+:Booking Closed;
+:Send Thank You Email;
+
+stop
+
+@enduml

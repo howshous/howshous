@@ -1,0 +1,52 @@
+@startuml Sequence Diagram - Payment Processing
+!define TITLE Sequence Diagram - Payment Processing
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowColor #009900
+
+actor Tenant
+participant "Payment App" as PayApp
+participant "API Gateway" as Gateway
+participant "Payment Service" as PayService
+participant "Payment Gateway\n(Stripe/PayPal)" as PaymentGW
+participant "Database" as DB
+participant "Notification Service" as NotifService
+
+Tenant -> PayApp: Initiate payment
+PayApp -> Gateway: POST /payments/initiate
+Gateway -> PayService: Create payment request
+PayService -> DB: Store payment record (PENDING)
+DB --> PayService: Payment ID
+PayService --> Gateway: Payment ID & redirect URL
+Gateway --> PayApp: Payment page URL
+PayApp --> Tenant: Redirect to payment page
+
+Tenant -> PaymentGW: Enter card details
+PaymentGW -> PaymentGW: Validate card
+PaymentGW -> PaymentGW: Tokenize payment
+PaymentGW --> Tenant: Verification (OTP/3D Secure)
+
+Tenant -> PaymentGW: Confirm verification
+PaymentGW -> PaymentGW: Process charge
+PaymentGW -> Gateway: Webhook: payment.success
+Gateway -> PayService: Update payment status
+PayService -> DB: Update payment (COMPLETED)
+DB --> PayService: Updated
+PayService -> NotifService: Send receipt
+NotifService --> Tenant: Payment receipt (Email/SMS)
+Gateway --> PaymentGW: Ack webhook
+
+alt Payment Fails
+PaymentGW -> Gateway: Webhook: payment.failed
+Gateway -> PayService: Update payment status
+PayService -> DB: Update payment (FAILED)
+DB --> PayService: Updated
+PayService -> NotifService: Send failure notification
+NotifService --> Tenant: Payment failed message
+end
+
+PayService --> PayApp: Payment status
+PayApp --> Tenant: Payment confirmation page
+
+@enduml

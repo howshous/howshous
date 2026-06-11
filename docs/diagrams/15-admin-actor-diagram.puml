@@ -1,0 +1,124 @@
+@startuml Admin Actor Diagram
+!define TITLE Admin User Profile & Interactions
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+
+package "ADMIN PROFILE" #E8F4F8 {
+    actor "Admin\n(Platform Manager)" as Admin
+    
+    note right of Admin
+        **Admin Characteristics:**
+        - Platform governance
+        - Content moderation
+        - User management
+        - Dispute resolution
+        - System monitoring
+    end note
+}
+
+package "ADMIN ACTIVITIES" #E8E8FF {
+    
+    usecase "UC1: User\nManagement" as UC1
+    note right of UC1
+        - View user list
+        - Verify users
+        - Suspend/Ban users
+        - View user profiles
+        - Reset credentials
+        - Handle disputes
+    end note
+    
+    usecase "UC2: Content\nModeration" as UC2
+    note right of UC2
+        - Review listings
+        - Moderate reviews
+        - Approve/Reject content
+        - Remove inappropriate content
+        - Track violations
+    end note
+    
+    usecase "UC3: Booking\nOversight" as UC3
+    note right of UC3
+        - Monitor bookings
+        - Handle cancellations
+        - Process disputes
+        - Verify transactions
+        - Refund management
+    end note
+    
+    usecase "UC4: Payment\nMonitoring" as UC4
+    note right of UC4
+        - View all transactions
+        - Verify payments
+        - Fraud detection
+        - Payout management
+        - Refund approvals
+        - Audit trails
+    end note
+    
+    usecase "UC5: Report\nGeneration" as UC5
+    note right of UC5
+        - Financial reports
+        - User statistics
+        - Booking analytics
+        - Performance metrics
+        - Compliance reports
+    end note
+    
+    usecase "UC6: Support\nTicket Management" as UC6
+    note right of UC6
+        - View tickets
+        - Assign to team
+        - Track resolution
+        - Escalation handling
+        - Feedback collection
+    end note
+    
+    usecase "UC7: System\nMonitoring" as UC7
+    note right of UC7
+        - API health check
+        - Database status
+        - Server performance
+        - Error logs
+        - Uptime monitoring
+    end note
+    
+    usecase "UC8: Policy\nManagement" as UC8
+    note right of UC8
+        - Update house rules
+        - Set commission rates
+        - Define penalties
+        - Manage features
+        - Configure settings
+    end note
+    
+    usecase "UC9: Dispute\nResolution" as UC9
+    note right of UC9
+        - Review complaints
+        - Mediate conflicts
+        - Make decisions
+        - Process refunds
+        - Issue warnings
+    end note
+}
+
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+Admin --> UC8
+Admin --> UC9
+
+UC1 ..> UC6 : support
+UC2 ..> UC9 : escalate to
+UC3 ..> UC4 : involves
+UC3 ..> UC9 : escalate to
+UC4 ..> UC5 : generates
+UC6 ..> UC9 : escalate to
+UC7 ..> UC5 : feeds into
+
+@enduml

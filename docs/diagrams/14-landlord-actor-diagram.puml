@@ -1,0 +1,123 @@
+@startuml Landlord Actor Diagram
+!define TITLE Landlord User Profile & Interactions
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+
+package "LANDLORD PROFILE" #E8F4F8 {
+    actor "Landlord\n(Property Owner)" as Landlord
+    
+    note right of Landlord
+        **Landlord Characteristics:**
+        - Owns/manages properties
+        - Wants to maximize revenue
+        - Needs efficient management
+        - Values occupancy rates
+        - Seeks reliable tenants
+    end note
+}
+
+package "LANDLORD ACTIVITIES" #FFE8CC {
+    
+    usecase "UC1: Property\nOnboarding" as UC1
+    note right of UC1
+        - Register property
+        - Add basic details
+        - Upload property photos
+        - Define house rules
+        - Set availability
+    end note
+    
+    usecase "UC2: Room Setup\n& Configuration" as UC2
+    note right of UC2
+        - Add rooms
+        - Upload room photos
+        - Describe amenities
+        - Set room capacity
+        - Define pricing
+    end note
+    
+    usecase "UC3: Pricing\n& Availability" as UC3
+    note right of UC3
+        - Set room rates
+        - Dynamic pricing
+        - Block dates
+        - Season pricing
+        - Minimum stay rules
+    end note
+    
+    usecase "UC4: Manage\nBookings" as UC4
+    note right of UC4
+        - View all bookings
+        - Accept/Confirm bookings
+        - Send check-in details
+        - Track occupancy
+        - Generate invoices
+    end note
+    
+    usecase "UC5: Tenant\nManagement" as UC5
+    note right of UC5
+        - View tenant profiles
+        - Communication history
+        - Rating & reviews
+        - Blacklist tenants
+        - Verification status
+    end note
+    
+    usecase "UC6: Maintenance\nManagement" as UC6
+    note right of UC6
+        - Receive requests
+        - Assign to vendors
+        - Track progress
+        - Update tenant status
+        - Maintain records
+    end note
+    
+    usecase "UC7: Payment\nTracking" as UC7
+    note right of UC7
+        - View earnings
+        - Payment history
+        - Bank account details
+        - Payout requests
+        - Tax reports
+    end note
+    
+    usecase "UC8: Analytics\n& Reports" as UC8
+    note right of UC8
+        - Occupancy rate
+        - Average rating
+        - Revenue trends
+        - Guest turnover
+        - Peak season analysis
+    end note
+    
+    usecase "UC9: Communicate\nwith Tenants" as UC9
+    note right of UC9
+        - In-app messaging
+        - Email notifications
+        - SMS alerts
+        - Broadcast messages
+        - Support resolution
+    end note
+}
+
+Landlord --> UC1
+Landlord --> UC2
+Landlord --> UC3
+Landlord --> UC4
+Landlord --> UC5
+Landlord --> UC6
+Landlord --> UC7
+Landlord --> UC8
+Landlord --> UC9
+
+UC1 ..> UC2 : setup
+UC2 ..> UC3 : configuration
+UC3 ..> UC4 : enables
+UC4 ..> UC5 : ongoing
+UC4 ..> UC6 : during stay
+UC4 ..> UC7 : from bookings
+UC7 ..> UC8 : data for
+UC9 ..> UC6 : supports
+
+@enduml

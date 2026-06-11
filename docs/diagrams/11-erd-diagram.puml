@@ -1,0 +1,180 @@
+@startuml Entity Relationship Diagram
+!define TITLE Entity Relationship Diagram
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam entity {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+}
+
+entity "users" as users {
+    *id: UUID <<PK>>
+    --
+    email: VARCHAR(255)
+    phone: VARCHAR(20)
+    password_hash: VARCHAR(255)
+    first_name: VARCHAR(100)
+    last_name: VARCHAR(100)
+    profile_picture_url: TEXT
+    user_type: ENUM(TENANT, LANDLORD, ADMIN)
+    is_verified: BOOLEAN
+    created_at: TIMESTAMP
+    updated_at: TIMESTAMP
+}
+
+entity "tenants" as tenants {
+    *tenant_id: UUID <<PK>>
+    --
+    user_id: UUID <<FK>>
+    id_number: VARCHAR(50)
+    id_expiry: DATE
+    emergency_contact: VARCHAR(255)
+    emergency_phone: VARCHAR(20)
+}
+
+entity "landlords" as landlords {
+    *landlord_id: UUID <<PK>>
+    --
+    user_id: UUID <<FK>>
+    business_name: VARCHAR(255)
+    bank_account: VARCHAR(50)
+    bank_name: VARCHAR(100)
+    is_verified: BOOLEAN
+    verification_date: TIMESTAMP
+}
+
+entity "properties" as properties {
+    *property_id: UUID <<PK>>
+    --
+    landlord_id: UUID <<FK>>
+    name: VARCHAR(255)
+    description: TEXT
+    address: VARCHAR(255)
+    city: VARCHAR(100)
+    state: VARCHAR(100)
+    zip_code: VARCHAR(20)
+    country: VARCHAR(100)
+    latitude: DECIMAL
+    longitude: DECIMAL
+    created_at: TIMESTAMP
+    updated_at: TIMESTAMP
+}
+
+entity "rooms" as rooms {
+    *room_id: UUID <<PK>>
+    --
+    property_id: UUID <<FK>>
+    room_number: VARCHAR(50)
+    room_type: ENUM(SINGLE, DOUBLE, SHARED)
+    capacity: INT
+    price_per_month: DECIMAL
+    available_from: DATE
+    available_to: DATE
+    created_at: TIMESTAMP
+    updated_at: TIMESTAMP
+}
+
+entity "bookings" as bookings {
+    *booking_id: UUID <<PK>>
+    --
+    room_id: UUID <<FK>>
+    tenant_id: UUID <<FK>>
+    check_in_date: DATE
+    check_out_date: DATE
+    total_price: DECIMAL
+    currency: VARCHAR(3)
+    booking_status: ENUM(PENDING, CONFIRMED, ACTIVE, COMPLETED, CANCELLED)
+    payment_status: ENUM(PENDING, COMPLETED, FAILED, REFUNDED)
+    created_at: TIMESTAMP
+    updated_at: TIMESTAMP
+}
+
+entity "payments" as payments {
+    *payment_id: UUID <<PK>>
+    --
+    booking_id: UUID <<FK>>
+    amount: DECIMAL
+    currency: VARCHAR(3)
+    payment_method: VARCHAR(50)
+    payment_status: ENUM(PENDING, COMPLETED, FAILED, REFUNDED)
+    transaction_id: VARCHAR(255)
+    paid_at: TIMESTAMP
+    created_at: TIMESTAMP
+}
+
+entity "maintenance_requests" as maintenance_requests {
+    *request_id: UUID <<PK>>
+    --
+    room_id: UUID <<FK>>
+    tenant_id: UUID <<FK>>
+    landlord_id: UUID <<FK>>
+    description: TEXT
+    priority: ENUM(LOW, MEDIUM, HIGH, URGENT)
+    status: ENUM(OPEN, ASSIGNED, IN_PROGRESS, RESOLVED, CLOSED)
+    created_at: TIMESTAMP
+    resolved_at: TIMESTAMP
+}
+
+entity "reviews" as reviews {
+    *review_id: UUID <<PK>>
+    --
+    property_id: UUID <<FK>>
+    tenant_id: UUID <<FK>>
+    rating: INT
+    comment: TEXT
+    is_verified_booking: BOOLEAN
+    created_at: TIMESTAMP
+    updated_at: TIMESTAMP
+}
+
+entity "documents" as documents {
+    *document_id: UUID <<PK>>
+    --
+    user_id: UUID <<FK>>
+    document_type: ENUM(ID, PASSPORT, VISA)
+    document_url: TEXT
+    uploaded_at: TIMESTAMP
+    expiry_date: DATE
+}
+
+entity "amenities" as amenities {
+    *amenity_id: UUID <<PK>>
+    --
+    name: VARCHAR(100)
+    description: TEXT
+    icon_url: TEXT
+}
+
+entity "room_amenities" as room_amenities {
+    *id: UUID <<PK>>
+    --
+    room_id: UUID <<FK>>
+    amenity_id: UUID <<FK>>
+}
+
+entity "property_rules" as property_rules {
+    *rule_id: UUID <<PK>>
+    --
+    property_id: UUID <<FK>>
+    rule_text: TEXT
+    created_at: TIMESTAMP
+}
+
+users ||--o{ tenants : has
+users ||--o{ landlords : has
+users ||--o{ documents : has
+landlords ||--o{ properties : owns
+properties ||--o{ rooms : contains
+properties ||--o{ reviews : has
+properties ||--o{ property_rules : has
+rooms ||--o{ bookings : has
+rooms ||--o{ room_amenities : ""
+room_amenities }o--|| amenities : includes
+tenants ||--o{ bookings : makes
+tenants ||--o{ reviews : writes
+tenants ||--o{ maintenance_requests : submits
+bookings ||--o{ payments : has
+maintenance_requests }o--|| landlords : assigned_to
+
+@enduml

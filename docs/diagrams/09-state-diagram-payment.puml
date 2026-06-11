@@ -1,0 +1,59 @@
+@startuml State Diagram - Payment Lifecycle
+!define TITLE State Diagram - Payment Lifecycle
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam state {
+    BackgroundColor #FFE8CC
+    BorderColor #FF6600
+}
+
+[*] --> Pending: User initiates payment
+
+Pending --> Processing: Payment request sent\nto gateway
+
+Processing --> Completed: Transaction successful
+Processing --> Failed: Card declined\nInvalid card\nInsufficient funds
+
+Failed --> Pending: User retries
+
+Completed --> Refunded: Refund requested\n(cancellation/dispute)
+
+Refunded --> [*]
+
+Completed --> [*]
+
+Failed --> [*]
+
+note right of Pending
+    Payment created
+    Awaiting user confirmation
+end note
+
+note right of Processing
+    Communication with
+    payment gateway (Stripe/PayPal)
+    Tokenization done
+end note
+
+note right of Completed
+    Payment successful
+    Transaction ID received
+    Funds captured
+    Receipt generated
+end note
+
+note right of Failed
+    Payment declined
+    Error details logged
+    User notified
+    Can retry
+end note
+
+note right of Refunded
+    Refund initiated
+    Processing refund request
+    Amount reversed to card
+end note
+
+@enduml

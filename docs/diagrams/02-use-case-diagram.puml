@@ -1,0 +1,77 @@
+@startuml Use Case Diagram
+!define TITLE Use Case Diagram - Smart Boarding House Solution
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam actor {
+    BackgroundColor #FFE8E8
+    BorderColor #FF0000
+}
+skinparam usecase {
+    BackgroundColor #E8F4E8
+    BorderColor #00AA00
+}
+
+actor "Tenant" as Tenant
+actor "Landlord" as Landlord
+actor "Admin" as Admin
+actor "Payment Provider" as PaymentProvider
+
+usecase "Search Available Rooms" as UC_SearchRooms
+usecase "View Room Details" as UC_ViewRoomDetails
+usecase "Book Room" as UC_BookRoom
+usecase "Make Payment" as UC_MakePayment
+usecase "Submit Maintenance Request" as UC_MaintenanceReq
+usecase "View Booking History" as UC_BookingHistory
+usecase "Rate & Review" as UC_Review
+usecase "Cancel Booking" as UC_CancelBooking
+
+usecase "List Rooms" as UC_ListRooms
+usecase "Add/Edit Room" as UC_EditRoom
+usecase "Manage Room Availability" as UC_ManageAvailability
+usecase "View Tenant List" as UC_ViewTenants
+usecase "Manage Bookings" as UC_ManageBookings
+usecase "Set Pricing" as UC_SetPricing
+usecase "Manage Payments" as UC_ManagePayments
+usecase "View Analytics" as UC_Analytics
+usecase "Respond to Maintenance" as UC_RespondMaintenance
+
+usecase "Manage Users" as UC_ManageUsers
+usecase "Moderate Content" as UC_ModerateContent
+usecase "View System Analytics" as UC_SystemAnalytics
+usecase "Manage Disputes" as UC_ManageDisputes
+
+usecase "Process Payment" as UC_ProcessPayment
+usecase "Refund" as UC_Refund
+
+Tenant --> UC_SearchRooms
+Tenant --> UC_ViewRoomDetails
+Tenant --> UC_BookRoom
+Tenant --> UC_MakePayment
+Tenant --> UC_MaintenanceReq
+Tenant --> UC_BookingHistory
+Tenant --> UC_Review
+Tenant --> UC_CancelBooking
+
+Landlord --> UC_ListRooms
+Landlord --> UC_EditRoom
+Landlord --> UC_ManageAvailability
+Landlord --> UC_ViewTenants
+Landlord --> UC_ManageBookings
+Landlord --> UC_SetPricing
+Landlord --> UC_ManagePayments
+Landlord --> UC_Analytics
+Landlord --> UC_RespondMaintenance
+
+Admin --> UC_ManageUsers
+Admin --> UC_ModerateContent
+Admin --> UC_SystemAnalytics
+Admin --> UC_ManageDisputes
+
+PaymentProvider --> UC_ProcessPayment
+PaymentProvider --> UC_Refund
+
+UC_MakePayment --> UC_ProcessPayment
+UC_CancelBooking --> UC_Refund
+
+@enduml

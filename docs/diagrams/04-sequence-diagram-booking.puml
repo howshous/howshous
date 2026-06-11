@@ -1,0 +1,58 @@
+@startuml Sequence Diagram - Booking Process
+!define TITLE Sequence Diagram - Room Booking Process
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowColor #0066CC
+skinparam actorBackgroundColor #FFE8E8
+
+actor Tenant
+participant "Mobile App" as App
+participant "API Gateway" as Gateway
+participant "Booking Service" as BookingService
+participant "Room Service" as RoomService
+participant "Payment Service" as PaymentService
+participant "Database" as DB
+participant "Email Service" as Email
+
+Tenant -> App: Search for available rooms
+App -> Gateway: GET /rooms?city=X&dates=Y
+Gateway -> RoomService: Query available rooms
+RoomService -> DB: Fetch rooms
+DB --> RoomService: Room list
+RoomService --> Gateway: Available rooms
+Gateway --> App: Room list
+App --> Tenant: Display rooms
+
+Tenant -> App: Select room & proceed to booking
+App -> App: Validate dates & price
+App -> Gateway: POST /bookings
+Gateway -> BookingService: Create booking
+BookingService -> RoomService: Verify room availability
+RoomService -> DB: Check availability lock
+DB --> RoomService: Available
+BookingService -> DB: Create booking record (PENDING)
+DB --> BookingService: Booking ID
+BookingService --> Gateway: Booking created
+Gateway --> App: Booking ID & payment details
+App --> Tenant: Show payment form
+
+Tenant -> App: Enter payment details
+App -> App: Validate card info
+App -> Gateway: POST /payments
+Gateway -> PaymentService: Process payment
+PaymentService -> PaymentService: Validate amount & currency
+PaymentService -> PaymentService: Call payment gateway
+PaymentService --> PaymentService: Payment confirmed
+PaymentService -> DB: Create payment record (COMPLETED)
+DB --> PaymentService: Payment saved
+PaymentService -> BookingService: Update booking status
+BookingService -> DB: Update booking (CONFIRMED)
+DB --> BookingService: Updated
+BookingService -> Email: Send confirmation
+Email --> Tenant: Booking confirmation email
+PaymentService --> Gateway: Payment success
+Gateway --> App: Payment completed
+App --> Tenant: Booking confirmed!
+
+@enduml

@@ -1,0 +1,140 @@
+@startuml Deployment Diagram
+!define TITLE Deployment Diagram - Smart Boarding House Solution
+title TITLE
+
+skinparam backgroundColor #FEFEFE
+skinparam node {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+}
+skinparam database {
+    BackgroundColor #FFE8CC
+    BorderColor #FF6600
+}
+
+node "Client Devices" {
+    device "Tenant Mobile\n(Android/iOS)" as TenantMobile
+    device "Landlord Mobile\n(Android/iOS)" as LandlordMobile
+    device "Admin Mobile\n(Android/iOS)" as AdminMobile
+    device "Web Browsers\n(Chrome/Safari/Firefox)" as WebBrowser
+}
+
+node "CDN & Load Balancing" {
+    node "CloudFront/Cloudflare" as CDN
+    node "Load Balancer\n(AWS ALB/nginx)" as LoadBalancer
+}
+
+node "API Server Cluster\n(AWS EC2/ECS)" {
+    node "API Instance 1" as API1
+    node "API Instance 2" as API2
+    node "API Instance 3" as API3
+}
+
+node "Microservices\n(Kubernetes/Docker)" {
+    node "User Service Pod" as UserPod
+    node "Booking Service Pod" as BookingPod
+    node "Payment Service Pod" as PaymentPod
+    node "Property Service Pod" as PropertyPod
+    node "Notification Service Pod" as NotificationPod
+}
+
+node "Cache Layer" {
+    node "Redis Cluster\n(Multi-node)" as RedisCluster
+}
+
+node "Data Layer\n(AWS RDS/Multi-AZ)" {
+    database "PostgreSQL\nPrimary" as DBPrimary
+    database "PostgreSQL\nReplica 1" as DBReplica1
+    database "PostgreSQL\nReplica 2" as DBReplica2
+}
+
+node "Storage" {
+    node "AWS S3\n(Media & Documents)" as S3
+    node "AWS CloudFront\n(CDN)" as CloudFront
+}
+
+node "Monitoring & Logging" {
+    node "ELK Stack\n(Elasticsearch/Logstash/Kibana)" as ELK
+    node "Prometheus\n(Metrics)" as Prometheus
+    node "Grafana\n(Dashboards)" as Grafana
+}
+
+node "Message Queue" {
+    node "RabbitMQ/Kafka\n(Event Bus)" as MessageQueue
+}
+
+node "External Services" {
+    node "Stripe/PayPal" as PaymentGW
+    node "SendGrid/AWS SES" as EmailProvider
+    node "Twilio/AWS SNS" as SMSProvider
+    node "Google Maps API" as MapsAPI
+}
+
+TenantMobile --> CDN
+LandlordMobile --> CDN
+AdminMobile --> CDN
+WebBrowser --> CDN
+
+CDN --> LoadBalancer
+LoadBalancer --> API1
+LoadBalancer --> API2
+LoadBalancer --> API3
+
+API1 --> UserPod
+API1 --> BookingPod
+API1 --> PaymentPod
+API1 --> PropertyPod
+API1 --> NotificationPod
+
+API2 --> UserPod
+API2 --> BookingPod
+API2 --> PaymentPod
+API2 --> PropertyPod
+API2 --> NotificationPod
+
+API3 --> UserPod
+API3 --> BookingPod
+API3 --> PaymentPod
+API3 --> PropertyPod
+API3 --> NotificationPod
+
+UserPod --> RedisCluster
+BookingPod --> RedisCluster
+PaymentPod --> RedisCluster
+PropertyPod --> RedisCluster
+
+UserPod --> DBPrimary
+BookingPod --> DBPrimary
+PaymentPod --> DBPrimary
+PropertyPod --> DBPrimary
+
+DBPrimary --> DBReplica1
+DBPrimary --> DBReplica2
+
+UserPod --> S3
+PropertyPod --> S3
+S3 --> CloudFront
+
+NotificationPod --> EmailProvider
+NotificationPod --> SMSProvider
+PaymentPod --> PaymentGW
+PropertyPod --> MapsAPI
+
+UserPod --> MessageQueue
+BookingPod --> MessageQueue
+PaymentPod --> MessageQueue
+NotificationPod --> MessageQueue
+
+UserPod --> ELK
+BookingPod --> ELK
+PaymentPod --> ELK
+PropertyPod --> ELK
+NotificationPod --> ELK
+
+API1 --> Prometheus
+API2 --> Prometheus
+API3 --> Prometheus
+
+Prometheus --> Grafana
+
+@enduml
